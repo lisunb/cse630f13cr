@@ -1,0 +1,999 @@
+// Switchable Interface Implementation START
+//
+// @author:  Marco Di Felice	
+//
+// Class Repository 
+// Cross-Layer Repository to enable channel information sharing between MAC and routing protocols
+
+#include "repository.h"
+
+static class Repositoryclass : public TclClass {
+public:
+        Repositoryclass() : TclClass("CrossLayerRepository") {}
+        TclObject* create(int argc, const char*const* argv) {
+          return (new Repository());
+        }
+} class_repository;
+
+
+// Initializer
+Repository::Repository() {
+
+	#ifndef LI_MOD
+	// Set randomly the receiver channel for each node	
+	for (int i=0; i<MAX_NODES; i++) {
+		int channel=get_random_channel();
+		repository_table[i].recv_channel= channel;
+	}
+
+	// Initialize each sending channel as NOT active for each node
+	for (int node=0; node<MAX_NODES; node++) 
+		for (int channel=0; channel< MAX_CHANNELS; channel++) 
+			repository_table_sender[node][channel].active=false;
+	#endif // No LI_MOD
+
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+#ifdef LI_MOD
+
+	// Intialize node table - variables related to node id and channle id
+	for (int i = 0; i < MAX_NODES; i++) {
+
+		// Set randomly the receiver channel for each node
+		int channel = get_random_channel();
+		repository_table[i].recv_channel = channel;
+		// Channel is not marked as set
+		repository_table[i].set = 0;
+
+		for(int j = 0; j < MAX_CHANNELS; j++) {
+
+			// Set channel sensing results as false
+			repository_table[i].sense_results[j] = false;
+
+			// Initialize each sending channel as NOT active for each node
+			repository_table_sender[i][j].active = false;
+
+			// Initialize channel sensing times and utilites
+			repository_table_sensing[i][j] = 0;
+			repository_channel_u[i][j] = 0.0;
+		}		
+
+		// To avoid using control channel
+		repository_channel_u[i][0] = 1.0;
+
+		// Initialize flow tables
+		for(int k = 0; k < MAX_FLOWS; k++)
+			repository_table[i].flow[k] = -1;
+	}
+
+	// Initialize neighbor tables
+	for(int i = 0; i < MAX_NODES; i++) { 
+		for(int j = 0; j < MAX_NB; j++)
+			repository_node_nb[i][j] = -1;
+	}
+
+	// Initialize sensing indicators
+	for(int i = 0; i < MAX_NODES; i++) { 
+		repository_in_sensing[MAX_NODES] = false;
+	}
+
+	#ifdef CRP
+	for(int i = 0; i < MAX_NODES; i++) { 
+		for(int j=0; j < NVS_PERIOD; j++) { 
+			for(int k=0; k < MAX_CHANNELS; k++) {
+				nvs_table[i].sensing[j][k] = -1;
+			}
+		}
+	}
+	#endif // end CRP
+
+	// Initialize route tables
+	for(int i = 0; i < MAX_FLOWS; i++) {
+		repository_table_path[i].src = -1;
+		repository_table_path[i].dst = -1;
+		repository_table_path[i].is_on = 0;
+		for(int j = 0; j < MAX_HOP; j++) {
+			repository_table_path[i].relay[j] = -1;
+		}
+	}
+
+	// Indicator for getting SpectrumData pointer
+	sd_pointer_set = 0;
+
+#endif //LI_MOD
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+}
+
+
+//get_recv_channel: Return the receiving channel for a node
+int 
+Repository::get_recv_channel(int node) {
+	if (node < MAX_NODES)
+		return repository_table[node].recv_channel;
+	else
+		return -1;
+}
+	 
+
+//set_recv_channel: Set the receiving channel for a node
+void 
+Repository::set_recv_channel(int node, int channel) {
+	if (node < MAX_NODES)
+		repository_table[node].recv_channel=channel;
+
+}
+
+		
+// update_send_channel: Set the sending channel as active, at the current time
+void 
+Repository::update_send_channel(int node, int channel, double time) {
+
+	if (node < MAX_NODES)  {
+		
+		repository_table_sender[node][channel].active=true;
+		repository_table_sender[node][channel].time=time;
+	
+	 }
+
+}
+		 
+
+//is_channel_used_for_sending: Check whether a given sending channel is active for a given node
+bool 
+Repository::is_channel_used_for_sending(int node, int channel, double timeNow) {
+
+	if (repository_table_sender[node][channel].active) {
+		if (timeNow - repository_table_sender[node][channel].time > TIMEOUT_ALIVE)
+			repository_table_sender[node][channel].active=false;
+	}
+	
+	return repository_table_sender[node][channel].active;
+	
+}
+
+
+//get_random_channel: Return a random channel between 1 and MAX_CHANNELS
+int 
+Repository::get_random_channel() {
+	
+	int channel=((int)(Random::uniform()*MAX_CHANNELS))+1;		
+	if (channel >= MAX_CHANNELS)
+		channel = MAX_CHANNELS-1;
+	return channel;
+}
+
+
+// recv: Empty method
+void
+Repository::recv(Packet*, Handler* = 0) {
+
+}
+
+// command: Empty method
+int
+Repository::command(int argc, const char*const* argv) {
+}
+
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+#ifdef LI_MOD
+
+
+/****************************
+ * Set spectrum data pointer 
+ ****************************/
+
+void 
+Repository::set_sd_pointer(SpectrumData *dataMod_ ) {
+
+        if(sd_pointer_set == 1)
+                return;
+
+		sd_ = dataMod_;
+
+		#ifdef LI_DEBUG
+		printf("[Set Spectrum Data Pointer in Repository] Successfully!\n");
+		#endif
+
+		sd_pointer_set = 1;
+}
+
+ 
+/********************************
+ * Update global neighbor table 
+ ********************************/
+
+void
+Repository::update_nb(int node, int nb) {
+
+	int i, is_nb = 0;
+
+	//check if this nb exists
+	for(i = 0; i < MAX_NB; i++) {
+		if(repository_node_nb[node][i] == -1)
+			break; // i is the position for this nb;
+		if(repository_node_nb[node][i] == nb) {
+			is_nb = 1;
+			break;
+		}
+	}
+
+	if((is_nb == 0)&&(i != MAX_NB)) 
+		repository_node_nb[node][i] = nb;
+}
+
+
+/**********************************************
+ * Functions used in channel sensing
+ **********************************************/
+
+// mark in sensing
+void
+Repository::mark_in_sensing(int node) {
+	
+	repository_in_sensing[node]=true;
+}
+
+// clear in sensing
+void
+Repository::clear_in_sensing(int node) {
+
+	repository_in_sensing[node]=false;
+}
+
+// check wehther a node is a relay node
+int
+Repository::check_recv_set(int node) {
+
+	return repository_table[node].set;
+}
+
+// Record one node's observation for a channel 
+// -- set it false for finding PU using it
+void
+Repository::mark_channel(int node, int channel, bool appear) {
+
+	repository_table[node].sense_results[channel] = appear;
+
+}
+
+#ifdef CRP
+void
+Repository::update_nvs_table(int node, int counter, int channel, bool appear) {
+
+	int index_ = (counter%NVS_PERIOD);
+	if(appear)
+		nvs_table[node].sensing[index_][channel] = 1;
+	else
+		nvs_table[node].sensing[index_][channel] = 0;
+}
+
+bool
+Repository::check_variance(int node, int channel, double time) {
+// return false if exceeding threshold
+
+	double threshold_ = 7.5e+04;
+	double bandwidth_ = 2.0e+06;
+
+	if(time < 50.0) {
+		printf("[!!!WARNING!!!] check_variance only can be used after 50.0\n");
+		exit(0);
+	}
+	
+	double beta = (1 - repository_channel_u[node][channel]); // average off time until now;
+	double ts_off = 0.0; // average off time of one sample
+	double var_sum = 0.0;
+	int one_sample_time = 10;
+	int nv_samples = (NV_PERIOD/one_sample_time);
+	int cnt_sum = 0;
+
+	for(int i=0; i < NV_PERIOD; i++) {
+		cnt_sum+=nvs_table[node].sensing[i][channel];
+		if(i%one_sample_time == 9) {
+			ts_off = 1- (double)cnt_sum/(double)one_sample_time;
+			if(ts_off < beta) {
+				var_sum+=(beta-ts_off)*(beta-ts_off); 
+			}
+			cnt_sum = 0;
+		}
+	}
+
+	double bit_sum = bandwidth*var_sum/(double)nv_samples;
+	if(bit_sum > threshold_)
+	// return false if exceeding threshold
+		return false;
+	else
+		return true;
+}
+#endif // end CRP
+
+// Update how many times one channel is found being used by a PU 
+void
+Repository::update_sensing_result(int node, int channel) {
+
+	repository_table_sensing[node][channel]++;
+
+}
+
+// Update channel' utilities after channel sensing
+void
+Repository::update_channel_u(int node, int counter) {
+
+	for(int i = 1; i < MAX_CHANNELS; i++)
+		repository_channel_u[node][i] = (double)repository_table_sensing[node][i]/(double)counter;
+
+}
+
+/********************************************************
+ * Functions used for joint path and channel allocation
+ ********************************************************/
+
+// calulate the link metric value (accroding to a metric)
+double
+Repository::cal_link_wt(int host, int nb, int channel, double time) {
+
+	double current_time = time;
+	double metric_value_ = 0.0;
+
+	#ifdef CP_AT
+	metric_value_ = 1 - (1 - repository_channel_u[host][channel])*(1 - repository_channel_u[nb][channel]);
+	#endif // CP_AT
+	
+	#ifdef CP_HT
+	metric_value_ = 1 - (1 - repository_channel_u[host][channel])*(1 - repository_channel_u[nb][channel]);
+	#endif // CP_HT
+
+	#ifdef SAMER
+	// Searching order is important since we care about transmission interference
+	
+	int channel_count=1;
+	// Count how mamy NBs are using this channel in 2 hops
+	int nb1, nb2; // 1-hop nb, 2-hop nb
+	int nb1_num=0; // number of 1-hop nb
+	int nb_counter=0; // number of 2-hop nb
+	bool appear=false;
+	int nb_list[MAX_NB]; // 2-hop nb list
+	for(int i=0; i < MAX_NB; i++)
+		nb_list[i]=-1;
+
+	for(int i=0; i < MAX_NB; i++) { // search 1-hop nb
+		if(repository_node_nb[host][i] == -1)
+			break;
+		nb_counter++;
+		nb_list[i]=repository_node_nb[host][i];
+	}
+
+	nb1_num = nb_counter;
+	for(int i=0; i < nb1_num; i++) { // search 2-hop nb
+		nb1 = nb_list[i];
+		for(int j=0; j < MAX_NB; j++) {
+			if(repository_node_nb[nb1][j] == -1)
+				break;
+			nb2 = repository_node_nb[nb1][j];
+			for(int k=0; k < nb_counter; k++) { // whether it is in nb_list
+				if(nb_list[k] == nb2)
+					appear=true;
+			}
+			if(appear == false && nb2 != host) { // should not have host
+				nb_list[nb_counter] = nb2;
+				nb_counter++;
+			}
+			appear=false;
+			if(nb_counter == MAX_NB) {
+				printf("[!!!WARNING!!!] 2-hop nb num exceed upper limit");
+				exit(0);
+			}
+		}
+	}
+
+	for(int i = 0; i < nb_counter; i++) { // check each 2-hop nb's sending channel
+		if(is_channel_used_for_sending(nb_list[i], channel, current_time))
+			channel_count++;
+	}
+
+	metric_value_ = 1 - ((1 - repository_channel_u[host][channel])*(1 - repository_channel_u[nb][channel])
+					*(1 - sd_->spectrum_table_[channel].per[host][nb])/(double)channel_count);
+	#endif // SAMER
+ 
+	#ifdef RDM
+	metric_value_ = 1 - (1 - repository_channel_u[host][channel])*(1 - repository_channel_u[nb][channel]);
+	#endif
+
+	#ifdef CRP
+	metric_value_ = repository_channel_u[nb][channel];
+	#endif
+
+	return metric_value_;
+}
+
+// calculate weight of each channel btwn neighbors according to a metric
+void
+Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
+
+	double current_time = time;
+
+	int nb; // the real node # of neighbor
+	nb = g->edges[node][neighbor].v;
+
+	int channel_ = -1;
+	double weight_ = MAXD; // current minimal weight
+	double t_; // temperature
+
+	if(repository_table[nb].set == 0) {
+	// when recv channel is not set ...
+		for(int i = 1; i < MAX_CHANNELS; i++) {
+
+			t_ = cal_link_wt(node, nb, i, current_time);	
+			
+			if(t_ < weight_) {
+				weight_ = t_;
+				channel_ = i;
+			}
+		}
+	}
+	else {
+	// when recv channel is set ...
+		channel_ = repository_table[nb].recv_channel;
+		weight_ = cal_link_wt(node, nb, channel_, current_time);
+	}
+
+	#ifdef RDM // RDM
+	weight_ = 1.0;
+	#endif
+
+	#ifdef CRP // CRP
+	if(weight_ >= 0.5) {
+	// Check probability of bandwidth availabiltiy
+		weight_ = MAXD; 
+	}
+	else{
+	// Check variance of bandwidth availabiltiy
+		if(check_variance(nb, channel, time )) {
+			weight_ = 1.0;
+		}
+		else {
+			weight_ = MAXD; 
+		}
+	}
+	#endif
+
+	// store the best weight and channel of for this neighbor	
+	g->edges[node][neighbor].weight = weight_;
+	g->edges[node][neighbor].channel = channel_;
+}
+
+// read graph for dijkstra
+// initialize graph; insert edges with min weight link/channel
+int
+Repository::construct_graph(graph *g, double time) {
+
+	double current_time = time;
+
+	// initialize graph
+	g->nvertices = 0;
+        g->nedges = 0;
+
+	int i, j;
+
+        for (i = 0; i < MAX_NODES; i++) {  
+		g->degree[i] = 0;
+		for (j = 0; j < MAX_NB; j++) {
+			g->edges[i][j].v = -1;
+			g->edges[i][j].weight = MAXD;
+			g->edges[i][j].channel = -1;
+		}	
+	}
+
+	// insert edges
+	g->nvertices = MAX_NODES; /* assume MAX_NODES is the number of all nodes used in simulation */
+
+	for (i = 0; i < g->nvertices; i++) {
+		for (j = 0; j < MAX_NB; j++) {
+			if (repository_node_nb[i][j] == (-1))
+				break;
+			if (g->degree[i] == (MAX_NB-1)) {
+				printf("\n[!!!WARNING!!!] Node %d will exceed max degree.\n\n",i);
+				exit(0);
+			}
+
+			g->edges[i][j].v = repository_node_nb[i][j];
+
+			// calculate weight with each channel
+			cal_min_wt_link(g, i, j, current_time);
+			g->degree[i] ++;
+			g->nedges ++;		
+		}
+	}
+
+	return 0;
+}
+
+// dijkstra by Steven S. Skiena
+void 
+Repository::dijkstra(graph *g, int start, int parent[]) {
+
+	int i;				/* counters */
+	bool intree[MAX_NODES];		/* is the vertex in the tree yet? */
+	double distance[MAX_NODES];	/* distance vertex is from start */
+	int v;				/* current vertex to process */
+	int w;				/* candidate next vertex */
+	double weight;			/* edge weight */
+	double dist;			/* best current distance from start */
+
+	for (i = 0; i < g->nvertices; i++) {
+		intree[i] = false;
+		distance[i] = MAXD;
+		parent[i] = -1;
+	}
+
+	distance[start] = 0.0;
+	v = start;
+
+	while (intree[v] == false) {
+		intree[v] = true;
+		for (i = 0; i < g->degree[v]; i++) {
+			w = g->edges[v][i].v;
+			weight = g->edges[v][i].weight;
+			
+			#ifdef CP_AT
+			if (distance[w] > (distance[v]+weight)) {
+				distance[w] = distance[v]+weight;
+				parent[w] = v;
+			}
+			#endif 
+
+			#ifdef CP_HT
+			double max_t = (distance[v]>weight?distance[v]:weight);
+
+			if (distance[w] > max_t) {
+				distance[w] = max_t;
+				parent[w] = v;
+			}
+			#endif
+
+			#ifdef SAMER 
+			double max_t = (distance[v]>weight?distance[v]:weight);
+
+			if (distance[w] > max_t) {
+				distance[w] = max_t;
+				parent[w] = v;
+			}
+			#endif
+
+			#ifdef RDM
+			if (distance[w] > (distance[v]+weight)) {
+				distance[w] = distance[v]+weight;
+				parent[w] = v;
+			}
+			#endif 
+		}
+
+		v = 1;
+		dist = MAXD;
+		for (i = 0; i < g->nvertices; i++) 
+			if ((intree[i] == false) && (dist > distance[i])) {
+				dist = distance[i];
+				v = i;
+			}
+	}
+/*for (i=1; i<=g->nvertices; i++) printf("%d %d\n",i,distance[i]);*/	
+}
+
+// write dijkstra's result in repository
+int
+Repository::record_path(graph *g, int start, int end, int parent[]) {
+
+	int i, j;
+	int entry_point;
+	int next_, parent_;
+
+	// ** Find one entry in global route table	
+	for(i = 0; i < MAX_FLOWS; i++) {
+		
+		if( repository_table_path[i].is_on == 0 ) { // Find one entry
+			break;
+		}
+
+		if( i == (MAX_FLOWS-1) ) {
+			printf("\n[!!!WARNING!!!] The number of flows exceeds the upper limit\n\n");
+			exit(0);
+		}
+	}
+
+	entry_point = i;
+
+	// ** Set src, dst & state.
+	repository_table_path[i].is_on = 1;
+	repository_table_path[i].src = start;
+	repository_table_path[i].dst = end;	
+
+	// ** Set path in reverse order, i.e. from dst to src.
+	// Both dst and src will show up on this path!
+	j = 0;
+	repository_table_path[i].relay[j] = end; /* set dst as the 0 relay*/	
+
+	next_ = end;
+	while( next_ != start ) {	/* set relays */
+		// src will appear as the last relay!
+		j++;
+		// We don't want too long route.
+		if( j == MAX_HOP ) {
+ 			printf("\n[!!!WARNING!!!] hop counts betw %d and %d exceeds upper limit!\n\n", 
+					start, end);
+			exit(0);
+		}
+		repository_table_path[i].relay[j] = parent[next_];
+		next_ = parent[next_];
+	}
+
+	// ** Set recv channels and flows this node serve.
+	// src's set value will not increase! 
+	// src's flow table will not have this flow id
+	next_ = end;
+	while( next_ != start ) { // src's set value will not increase! 
+
+		int k;
+		parent_ = parent[next_];
+		for( k = 0; k < g->degree[parent_]; k++ ) {
+			if( g->edges[parent_][k].v == next_ )
+				break;
+		}
+
+		// * Set recv channels 
+		if(repository_table[next_].set == 0) {
+			// This node is chosen as a relay node for the first time.	
+			repository_table[next_].recv_channel = g->edges[parent_][k].channel;
+			repository_table[next_].set++;
+		} else {
+			// This node is an intersecting node of multiple flows.
+
+			// In normal conditions, we don't need to set the recv channel again.	
+			if(repository_table[next_].recv_channel != g->edges[parent_][k].channel) {
+				printf("\n[!!!WARNING!!!] The intersecting node %d is set to use another channel.\n", 
+						next_);
+				exit(0);
+			}
+
+			// Record how many flows are using this node.
+			repository_table[next_].set++;
+		}
+
+		// * Set flows this node serve
+		for(int f = 0; f < MAX_FLOWS; f++) { // Error Check
+			// i is the flow index in global route table
+			if(repository_table[next_].flow[f] == i) {
+				printf("\n[!!!WARNING!!!] Node: %d shows up twice in route: %d.\n\n", next_, i);
+				exit(0);
+			}
+		}
+
+		for(int f = 0; f < MAX_FLOWS; f++) {
+			// Find one entry in local flow table.			
+			if(repository_table[next_].flow[f] == -1) {
+				repository_table[next_].flow[f] = i;
+				break;
+			}
+		}
+
+		next_ = parent[next_];		
+	}
+
+	return entry_point;
+}	
+
+// route and channel joint allocation
+int
+Repository::set_route_channel(int src, int dst, double time) {
+
+	double current_time = time;
+	int entry_point, hop_count; 
+	int parent[MAX_NODES];			/* discovery relation */
+	graph g;
+
+	// Check whether we have set route and channel for this src-dst
+	for(int i = 0; i < MAX_FLOWS; i++) {
+		if( repository_table_path[i].is_on == 1 &&
+			repository_table_path[i].dst == dst &&
+		    repository_table_path[i].src == src ) { // Check whether path exists
+				return 0;
+		}
+	}
+
+	// Read/Contruct graph with repository
+	if( construct_graph(&g, current_time) != 0)  {
+		printf("\n[!!!WARNING!!!] Reading graph failed.\n\n");
+		exit(0);
+	}
+
+	// Search the best path
+	dijkstra(&g, src, parent);
+
+	// Record the path & channel allocation results in repository
+	entry_point =  record_path(&g, src, dst, parent); 
+
+	// Print the route info ...
+	for(hop_count=0; hop_count < MAX_HOP; hop_count++) {
+		if(repository_table_path[entry_point].relay[hop_count] == -1)
+			break;
+	}
+	printf("[ROUTE INFO] Src: %d Dst: %d Time: %f Hop: %d Relay:", src, dst, time, (hop_count -1));
+	for(int i=(hop_count -1); i >= 0; i--)
+		printf(" %d", repository_table_path[entry_point].relay[i]);
+	printf(" Channel:");
+	for(int i=(hop_count -1); i >= 0; i--)
+		printf(" %d", repository_table[(repository_table_path[entry_point].relay[i])].recv_channel);
+	printf("\n");
+
+			#ifdef LI_DEBUG
+			printf("Print the Number of PU Appearance on Each Channel.\n");
+			for(int i = 0; i < MAX_NODES; i++) {
+				printf("Observation of Node %d:\n", i);
+				for(int j = 1; j < MAX_CHANNELS; j++) {
+					printf("%d ", repository_table_sensing[i][j]);
+				}
+				printf("\n");
+			}
+			#endif // LI_DEBUG
+
+	return 0;
+}
+
+/****************************************************
+ * Functions for channel switching and route repair
+ ****************************************************/
+
+// Check whether an available channel for all nodes
+bool
+Repository::channel_for_all(int channel, int *node, int num) {
+
+	bool available=true;
+	int node_;
+
+	for(int i=0; i < num; i++) {
+		node_ = node[i];
+		if(repository_table[node_].sense_results[channel] == false) {
+			available=false;
+			break;
+		}
+	}
+
+	return available;
+}
+
+// Change the recv channel when finding a PU using it
+int
+Repository::change_channel(int *list, int node_num, double time) {
+
+	double current_time = time;
+	int node_list[MAX_FLOWS+1]; // 0 is for RX
+
+	// limark
+	printf("Number of nodes: %d\n", node_num);
+	printf("Node lists: ");
+	if(node_num > MAX_FLOWS + 1) {
+		printf("[!!!WARNING!!!] node_num exceeds MAX_FLOW + 1 in change_channel.\n");
+		exit(0);
+	}
+
+	for(int i=0; i < node_num; i++) {
+		node_list[i] = list[i];
+		// limark
+		printf("%d ", node_list[i]);
+	}
+	
+	// limark
+	printf("\n");
+
+	int host_=node_list[0];
+
+	// Error Check
+	if( repository_table[host_].set != node_num - 1 ) {
+		printf("\n[!!!WARNING!!!] node %d set: %d node_num: %d not correct while changing channel.\n\n",
+				node_list[0], repository_table[host_].set, node_num);
+		exit(0);
+	}
+
+	// Check available channels we can use 
+	int channel_num = 0;
+	int channel_list[MAX_CHANNELS];
+
+	// limark
+	printf("Available channels:");
+
+	for(int chan_=1; chan_ < MAX_CHANNELS; chan_++) {
+		if( channel_for_all(chan_, node_list, node_num) ) {
+			channel_list[channel_num]=chan_;
+			// limark
+			printf(" %d", chan_);
+			channel_num++;
+		}
+	}
+
+	// limark
+	printf("\n");
+
+	if(channel_num == 0)
+		return -1;
+
+	int channel_;
+	double weight_ = MAXD;
+
+	for(int i=0; i < channel_num; i++) {
+		int chan_ = channel_list[i];
+		double t_ = 0.0;
+		for(int j=1; j < node_num; j++) {
+			int prev_node_ = node_list[j];	
+			t_+=cal_link_wt(host_, prev_node_, chan_, current_time);	
+		}
+
+		if(t_ < weight_) {
+			weight_ = t_;
+			channel_ = chan_;
+		}
+	}
+		
+	return channel_;
+} 
+
+// Return flow id
+int
+Repository::read_flow_id(int node, int index) {
+	
+	return repository_table[node].flow[index];
+}
+
+// Return flow dst
+int
+Repository::read_flow_dst(int index) {
+
+	return repository_table_path[index].dst;
+}
+
+// Find out who is the previous hop
+int
+Repository::find_prev_hop(int node, int flow) {
+
+	int i, pre_hop;
+	for(i = 0; i < MAX_HOP; i++) {
+		if(repository_table_path[flow].relay[i] == node)
+			break;
+	}
+	
+	pre_hop = repository_table_path[flow].relay[i+1];
+
+	return pre_hop;
+}
+
+void
+Repository::clean_route_channel(int *flow_list, int flow_num) {
+
+	for(int i=0; i < flow_num; i++) {
+		// read each flow id
+		int flow_id_ = flow_list[i];
+		printf(" [Broken Route] Src: %d Dst: %d\n",
+				repository_table_path[flow_id_].src, repository_table_path[flow_id_].dst);
+
+		// deal with node as relay - decrease set num and clean flow id
+		for(int j = 0; j < MAX_HOP; j++) {
+			int relay_node_ = repository_table_path[flow_id_].relay[j];
+
+			if((relay_node_ != -1) && (relay_node_ != repository_table_path[flow_id_].src)) {
+				if(repository_table[relay_node_].set > 0) {
+					repository_table[relay_node_].set--; // Decrease relay's set number in node table
+				}
+
+				for(int k = 0; k < MAX_FLOWS; k++) { // Clean relay's flow id in node table
+					if(repository_table[relay_node_].flow[k] == flow_id_)
+						repository_table[relay_node_].flow[k] = -1;
+				}
+			}
+		}
+
+		// deal with route - clean relay, src, dst and reset is_on
+		for(int j = 0; j < MAX_HOP; j++) {
+			repository_table_path[flow_id_].relay[j] = -1;
+		}
+
+		repository_table_path[flow_id_].is_on = 0;
+		repository_table_path[flow_id_].src = -1;
+		repository_table_path[flow_id_].dst = -1;
+	}
+}
+
+// Clean current route before repairing 
+void
+Repository::clean_all_route_channel(int node) {
+	
+	int flow_id, relay_node;
+	int flow_cnt = 0;
+	int num_flow = repository_table[node].set;
+
+	for(int i = 0; i < MAX_FLOWS; i++) {
+		if(repository_table[node].flow[i] != -1) { 
+
+			// find out each flow this node serves
+			flow_cnt++;
+			flow_id = repository_table[node].flow[i];
+			printf(" [Broken Route] Src: %d Dst: %d\n",
+					repository_table_path[flow_id].src, repository_table_path[flow_id].dst);
+
+			// deal with each node as relay in this route entry (except the src node)
+			for(int j = 0; j < MAX_HOP; j++) {
+				relay_node = repository_table_path[flow_id].relay[j];
+				// ---  We don't need to deal with src node since its flow table dosen't have this flow_id!
+				if((relay_node != -1) && (relay_node != repository_table_path[flow_id].src)) {
+					if(repository_table[relay_node].set > 0) {
+						repository_table[relay_node].set--; // Decrease relay's set number in node table
+					}
+					for(int k = 0; k < MAX_FLOWS; k++) { // Clean relay's flow id in node table
+						if(repository_table[relay_node].flow[k] == flow_id)
+							repository_table[relay_node].flow[k] = -1;
+					}
+				}
+			}
+
+			// Clean this route entry  
+			for(int j = 0; j < MAX_HOP; j++) {
+				repository_table_path[flow_id].relay[j] = -1;
+			}
+
+			repository_table_path[flow_id].is_on = 0;
+			repository_table_path[flow_id].src = -1;
+			repository_table_path[flow_id].dst = -1;
+		}
+	}
+
+	// Error Check
+	if(flow_cnt != num_flow) {
+		printf("\n[!!!WARNING!!!] set in repository_table is not correct while cleaning.\n\n");
+		exit(0);
+	}
+
+	// Clean this node
+	repository_table[node].set = 0;
+	for( int i = 0; i < MAX_FLOWS; i++) 
+		repository_table[node].flow[i] = -1;
+}
+
+/*************************************
+ * Functions for AODV protocols
+ *************************************/
+
+int 
+Repository::get_path_id(int dst, int src) {  
+
+	int i;
+	int id = -1;
+
+	for(i = 0; i < MAX_FLOWS; i++) {
+
+		if(repository_table_path[i].dst == dst && repository_table_path[i].src == src &&
+			repository_table_path[i].is_on == 1) { 
+			id = i;
+			break;	
+		}
+
+	}
+
+	return id;
+}
+
+int
+Repository::get_addr_by_hop(int id, int count) {
+
+	int node_;
+	node_ = repository_table_path[id].relay[count];
+	return node_;
+}
+
+int
+Repository::check_path_state(int id) {
+
+	return repository_table_path[id].is_on;
+}
+
+#endif //LI_MOD
+
+
+// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+// Switchable Interface Implementation END
+

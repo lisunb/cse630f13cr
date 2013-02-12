@@ -1,0 +1,12 @@
+# Compiled source #
+###################
+*.o
+
+# Logs and databases #
+######################
+*.log
+
+# Directories #
+###############
+gen/
+tcl/test/

@@ -1,0 +1,6 @@
+./mac/mac-802_11.cc:				sm_->setRepository(repository_);
+./mac/mac-802_11.cc:				sm_->setPUmodel(0.1, pumodel_);
+./mac/mac-802_11.cc:				sm_->start();		
+./mac/mac-802_11.cc:				sm_->setSpectrumData(sd_);
+./mac/mac-802_11.cc:	if ((index_%MAX_RADIO == RECEIVER_RADIO) && (!sm_->is_channel_available()) )
+./mac/mac-802_11.cc:		if (sm_->is_PU_interfering(p))
