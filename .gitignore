@@ -13,9 +13,11 @@ tcl/test/
 
 # Auto File #
 #############
-
+ns
 Makefile
 autoconf.h
+config.status
+common/ptypes2tcl
 indep-utils/cmu-scen-gen/setdest/calcdest
 indep-utils/cmu-scen-gen/setdest/setdest
 indep-utils/webtrace-conv/dec/dec-tr-stat
