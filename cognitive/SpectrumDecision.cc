@@ -70,13 +70,11 @@ SpectrumDecision::decideSpectrum(int current_channel) {
 		
 	int next_channel;
 
-		#ifndef LI_MOD // should be switch(spectrum_policy_) - Li
-		switch(decision_policy_) {	
-		#endif // no LI_MOD
-
-	#ifdef LI_MOD
+	#ifndef LI_MOD // should be replaced with switch(spectrum_policy_) - Li
+	switch(decision_policy_) {	
+	#else // LI_MOD
 	switch(spectrum_policy_) {
-	#endif // LI_MOD
+	#endif 
 		
 		// Policy RANDOM_SWITCH: next_channel -> random(1..MAX_CHANNELS)
 		case RANDOM_SWITCH:

@@ -5,6 +5,7 @@
 # Logs and databases #
 ######################
 *.log
+tags
 
 # Directories #
 ###############
