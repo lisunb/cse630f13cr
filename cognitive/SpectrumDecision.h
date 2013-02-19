@@ -61,4 +61,3 @@ class SpectrumDecision {
 // CRAHNs Model END
 // @author:  Marco Di Felice
 
-

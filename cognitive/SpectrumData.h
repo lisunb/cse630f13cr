@@ -20,17 +20,13 @@ struct spectrum_entry_t  {
 	// current bandwidth
 	double bandwidth;
 	
-#ifndef LI_MOD // No LI_MOD
+#ifndef LI_MOD
 	// Packet Error Rate (PER) value	
 	double per;
+#else // LI_MOD
+	double per[MAX_NODES][MAX_NODES]; // per[receiver][sender]
 #endif
-
-#ifdef LI_MOD // LI_MOD
-	// per [(receiver)] [(sender)]
-	double per[MAX_NODES][MAX_NODES];
-#endif
-
- };
+};
 
 
 class SpectrumData : public NsObject {

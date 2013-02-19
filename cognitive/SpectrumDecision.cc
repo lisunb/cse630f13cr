@@ -108,4 +108,3 @@ SpectrumDecision::decideSpectrum(int current_channel) {
 // CRAHNs Model END
 // @author:  Marco Di Felice
 
-

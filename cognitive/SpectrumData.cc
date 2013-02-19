@@ -47,7 +47,7 @@ SpectrumData::read_spectrum_file(char *fileName) {
 	// - bandwidth (b/s)
 	// - packet error rate 
 	
-#ifndef LI_MOD
+#ifndef LI_MOD // no LI_MOD
 	for (int i=0; i<MAX_CHANNELS; i++)  {
 
 		int channel;
@@ -70,9 +70,8 @@ SpectrumData::read_spectrum_file(char *fileName) {
 		spectrum_table_[channel].bandwidth=bandwidth;
 		spectrum_table_[channel].per=per;
 	 }
-#endif // No LI_MOD	
+#else // LI_MOD
 
-#ifdef LI_MOD
 	int entry_num = (MAX_CHANNELS*MAX_NODES*MAX_NODES);
 
 	for (int i=0; i < entry_num; i++) {
