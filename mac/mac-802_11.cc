@@ -719,26 +719,8 @@ Mac802_11::deferHandler()
 void
 Mac802_11::navHandler()
 {
-	// limark
-	if(is_idle() && mhBackoff_.paused()) { 
-		#ifndef LI_MOD // LI_MOD
-		if (index_%MAX_RADIO == TRANSMITTER_RADIO && 
-			repository_->repository_in_sensing[(index_/MAX_RADIO)]) {
-				double time_now=Scheduler::instance().clock();
-				int period = time_now*10/11;
-				double time_wait = (double)period*1.1 + 0.1 - time_now;
-				printf("catch back off resume, node: %d, time: %f, time_wait: %f.\n", index_/MAX_RADIO, time_now, time_wait);
-				if(time_wait < 0.00000000 || time_wait > 0.10000000) {
-					printf("[!!!WARNING!!!] Set the wrong time in back off timer.\n");
-					exit(0);
-				}
-				double mac_difs = phymib_.getDIFS();
-				mhBackoff_.resume((time_wait + mac_difs));
-		}
-		else
-		#endif // End of LI_MOD
-			mhBackoff_.resume(phymib_.getDIFS());
-	}
+	if(is_idle() && mhBackoff_.paused()) 
+		mhBackoff_.resume(phymib_.getDIFS());
 }
 
 void
@@ -1363,29 +1345,9 @@ Mac802_11::send(Packet *p, Handler *h)
 				 * If we are already deferring, there is no
 				 * need to reset the Defer timer.
 				 */
-				if (bugFix_timer_) { // bugFix_timer_ is set default - Li
-					// limark
-					#ifndef LI_MOD // LI_MOD
-					if (index_%MAX_RADIO == TRANSMITTER_RADIO && 
-						repository_->repository_in_sensing[(index_/MAX_RADIO)]) {
-							double time_now=Scheduler::instance().clock();
-							int period = time_now*10/11;
-							double time_wait = (double)period*1.1 + 0.1 - time_now;
-							printf("catch back off resume, node: %d, time: %f, time_wait: %f.\n", index_/MAX_RADIO, time_now, time_wait);
-							if(time_wait < 0.00000000 || time_wait > 0.10000000) {
-								printf("[!!!WARNING!!!] Set the wrong time in back off timer.\n");
-								exit(0);
-							}
-							double mac_difs = phymib_.getDIFS();
-							mhBackoff_.start(cw_, is_idle(), (time_wait + mac_difs));
-						
-					}
-					else
-					#endif // End of LI_MOD
-					{
+				if (bugFix_timer_) { // bugFix_timer_ is set by default - Li
 					 mhBackoff_.start(cw_, is_idle(), 
 									  phymib_.getDIFS());
-					}
 				}
 				else { 
 					rTime = (Random::random() % cw_)
@@ -1490,7 +1452,7 @@ Mac802_11::recv(Packet *p, Handler *h)
 		
 		#ifdef CHANNEL_ERR_CHECK	
 		// check err value
-		if( (per_[(index_/MAX_RADIO)][(src/MAX_RADIO)] > 0.30000000) || 
+		if( (per_[(index_/MAX_RADIO)][(src/MAX_RADIO)] > 0.20000000) || 
 			(per_[(index_/MAX_RADIO)][(src/MAX_RADIO)] < 0.00000000) ) {
 				printf("[!!!WARNING!!!] per_[%d][%d] = %f", 
 						index_/MAX_RADIO, src/MAX_RADIO, per_[(index_/MAX_RADIO)][(src/MAX_RADIO)]);
