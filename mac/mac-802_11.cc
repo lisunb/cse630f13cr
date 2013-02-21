@@ -250,13 +250,22 @@ Mac802_11::Mac802_11() :
 	switchable_policy_=ROUND_ROBIN_ACTIVE_CHANNELS;  //marco prefers this one
 	///////////////////switchable_policy_=ROUND_ROBIN_ALL_CHANNELS;
 	
+#ifdef LI_MOD // LI_MOD
+	per_by_pu = 0.2; //Set the loss ratio caused by pu activites.
+	sense_duration = 0.1;
+	tx_duration = 0.9;
+
+	if (index_%MAX_RADIO == TRANSMITTER_RADIO)
+		sm_=new SpectrumManager(this, index_/MAX_RADIO, sense_duration, tx_duration);
+	
+	if (index_%MAX_RADIO == RECEIVER_RADIO)
+		sm_=new SpectrumManager(this,index_/MAX_RADIO, sense_duration, tx_duration);
+#else
+	
 	if (index_%MAX_RADIO == RECEIVER_RADIO)
 		sm_=new SpectrumManager(this,index_/MAX_RADIO,0.1,1.0);
-
-#ifdef LI_MOD
-	if (index_%MAX_RADIO == TRANSMITTER_RADIO)
-		sm_=new SpectrumManager(this,index_/MAX_RADIO,0.1,1.0);
 #endif
+
 	// CRAHNs Model END
 
 }
@@ -336,11 +345,7 @@ Mac802_11::command(int argc, const char*const* argv)
 			if (index_%MAX_RADIO == RECEIVER_RADIO)  {
 				sd_ = (SpectrumData *) TclObject::lookup(argv[2]);
 				sm_->setSpectrumData(sd_);
-#ifdef LI_MOD
-				per_by_pu = 0.2; //Set the loss ratio caused by pu.
-#endif
 			}
-
 
 			return TCL_OK;
 
@@ -1311,7 +1316,14 @@ Mac802_11::send(Packet *p, Handler *h)
 
 		if (first_tx_attempt_) {
 			new_switchable_channel_=switching_channel_;
+#ifdef LI_MOD // LI_MOD
+			double current_time = Scheduler::instance().clock();
+			int int_time = current_time / QUEUE_UTILIZATION_INTERVAL;
+			double first_interval = QUEUE_UTILIZATION_INTERVAL - (current_time - int_time);
+			mhQueue_.start(first_interval);
+#else
 			mhQueue_.start(QUEUE_UTILIZATION_INTERVAL);
+#endif
 			first_tx_attempt_=false;
 		 }
 
@@ -1981,14 +1993,14 @@ Mac802_11::switchqueueHandler()
 		printf(" [SWITCHING INTERFACE] Node: %d Current channel: %d Time:%f \n",index_/MAX_RADIO,new_switchable_channel_, Scheduler::instance().clock());
 //	#endif
 
+	// LI_MOD: Modify here to avoid memory leak.
 	// Notify the IFQ layer that a queue switching has been performed
-	EventSwitch *p=new EventSwitch();
-	p->channel = new_switchable_channel_;
 	// If the node is not transmitting, then ask for another packet to the upper IFQ layer
 	if (callbackQueue_ && pktTx_==NULL) {
+		EventSwitch *p=new EventSwitch();
+		p->channel = new_switchable_channel_;
 		callbackQueue_->handle(p);
 	 }
-
 	
 	#ifdef CHANNEL_SWITCHING_MODEL
 	// The tx interface is performing channel switching

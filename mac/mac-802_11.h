@@ -299,19 +299,17 @@ public:
 	// CRAHNs Model START
 	// @author:  Marco Di Felice	
 
-#ifndef LI_MOD // No LI_MOD
+#ifndef LI_MOD // no LI_MOD
 	// Load the spectrum characteristics for the actual channel (bandwidth/PER/...)
 	void load_spectrum(spectrum_entry_t spectrum);	
-#else // LI_MOD
-	void load_spectrum(int channel);	
-#endif
 
 	// Notify the detection of a PU on the actual channel
-#ifndef LI_MOD // No LI_MOD
 	void notifyUpperLayer(int channel);
 #else // LI_MOD
+	void load_spectrum(int channel);	
 	void notifyUpperLayer(int *udst_list, int udst_num); 	
 #endif
+
 	// This method should be public
 	inline void checkBackoffTimer(void);
 
@@ -554,6 +552,8 @@ private:
 	#undef CHANNEL_ERR_CHECK	
 	double per_[MAX_NODES][MAX_NODES];
 	double per_by_pu; // packet loss ratio intefered by pu
+	double sense_duration; // the time used for sensing
+	double tx_duration; // the time used for tx or rx
 #endif
 
 	// CRAHNs Model END

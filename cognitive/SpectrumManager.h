@@ -125,7 +125,7 @@ class SpectrumManager  {
 		int nodeId_;
 
 #ifdef LI_MOD // LI_MOD
-		int pu_on_tx;
+		int pu_on_tx; 
 		int num_prev_relay;
 		Prev_Hop prev_hop[MAX_FLOWS];
 #endif
