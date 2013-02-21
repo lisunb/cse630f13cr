@@ -36,6 +36,8 @@
 #ifndef __mac_timers_h__
 #define __mac_timers_h__
 
+#define LI_MOD
+
 /* ======================================================================
    Timers
    ====================================================================== */
@@ -146,6 +148,21 @@ public:
 
 // CRAHNs Model END
 
+#ifdef LI_MOD
+class SyncSenseTimer : public MacTimer {
+public:
+	SyncSenseTimer(Mac802_11 *m) : MacTimer(m) {}
+
+	void	handle(Event *e);
+};
+
+class SyncTxTimer : public MacTimer {
+public:
+	SyncTxTimer(Mac802_11 *m) : MacTimer(m) {}
+
+	void	handle(Event *e);
+};
+#endif
 
 #endif /* __mac_timers_h__ */
 

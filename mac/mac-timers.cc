@@ -350,3 +350,16 @@ SwitchChannelTimer::handle(Event *)
 
 // CRAHNs Model END
 
+#ifdef LI_MOD
+void    
+SyncSenseTimer::handle(Event *)
+{       
+	mac->syncsenseHandler();
+}
+
+void    
+SyncTxTimer::handle(Event *)
+{       
+	mac->synctxHandler();
+}
+#endif

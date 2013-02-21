@@ -271,6 +271,10 @@ class Mac802_11 : public Mac {
 
 	friend class SwitchQueueTimer;
 	friend class SwitchChannelTimer;
+#ifdef LI_MOD
+	friend class SyncSenseTimer;
+	friend class SyncTxTimer;
+#endif
 
 public:
 	Mac802_11();
@@ -549,11 +553,16 @@ private:
 	// Packet Error Rate (PER) of the current channel
 	double			per_;
 #else // LI_MOD
+	SyncSenseTimer mhSyncSense_;
+	SyncTxTimer mhSyncTx_;
+	void syncsenseHandler();
+	void synctxHandler();
+
 	#undef CHANNEL_ERR_CHECK	
 	double per_[MAX_NODES][MAX_NODES];
 	double per_by_pu; // packet loss ratio intefered by pu
 	double sense_duration; // the time used for sensing
-	double tx_duration; // the time used for tx or rx
+	double rx_duration; // the time used for tx or rx
 #endif
 
 	// CRAHNs Model END

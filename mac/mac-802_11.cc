@@ -199,6 +199,9 @@ Mac802_11::Mac802_11() :
 	Mac(), phymib_(this), macmib_(this), mhIF_(this), mhNav_(this), 
 	mhRecv_(this), mhSend_(this), 
 	mhDefer_(this), mhBackoff_(this), mhQueue_(this), mhSwitch_(this)
+#ifdef LI_MOD
+	, mhSyncSense_(this), mhSyncTx_(this)
+#endif
 {
 	
 	nav_ = 0.0;
@@ -253,13 +256,15 @@ Mac802_11::Mac802_11() :
 #ifdef LI_MOD // LI_MOD
 	per_by_pu = 0.2; //Set the loss ratio caused by pu activites.
 	sense_duration = 0.1;
-	tx_duration = 0.9;
+	rx_duration = 0.9;
 
-	if (index_%MAX_RADIO == TRANSMITTER_RADIO)
-		sm_=new SpectrumManager(this, index_/MAX_RADIO, sense_duration, tx_duration);
+	if (index_%MAX_RADIO == TRANSMITTER_RADIO) {
+		sm_=new SpectrumManager(this, index_/MAX_RADIO, sense_duration, rx_duration);
+		mhSyncSense_.start(sense_duration);
+	}
 	
 	if (index_%MAX_RADIO == RECEIVER_RADIO)
-		sm_=new SpectrumManager(this,index_/MAX_RADIO, sense_duration, tx_duration);
+		sm_=new SpectrumManager(this,index_/MAX_RADIO, sense_duration, rx_duration);
 #else
 	
 	if (index_%MAX_RADIO == RECEIVER_RADIO)
@@ -2101,6 +2106,26 @@ Mac802_11::load_spectrum(int channel) {
 
 
 // CRAHNs Model END
+
+#ifdef LI_MOD
+void
+Mac802_11::syncsenseHandler()
+{
+	// channel_switching_=false;
+	// Restart backoff timer
+	// checkBackoffTimer();
+	mhSyncTx_.start(rx_duration);
+}
+
+void
+Mac802_11::synctxHandler()
+{
+	// channel_switching_=false;
+	// Restart backoff timer
+	// checkBackoffTimer();
+	mhSyncSense_.start(sense_duration);
+}
+#endif
 
 //channel utilization
 /*
