@@ -55,14 +55,14 @@ SpectrumManager::start() {
 	// Retrive the current channel on which the CR is tuned on the RECEIVER interface
 	int current_channel = repository_->get_recv_channel(nodeId_);
 
-#ifdef LI_MOD // No LI_MOD
+#ifdef LI_MOD // LI_MOD
 	pu_on_tx=0;
 
 	mac_->load_spectrum(current_channel);
 	// set spectrum data pointer only once
 	if (repository_->sd_pointer_set == 0) 
 		repository_->set_sd_pointer(dataMod_);	
-#else // no LI_MOD
+#else 
 	// Load spectrum characteristics (bandwidth, PER, ...)
 	mac_->load_spectrum(dataMod_->get_spectrum_data(current_channel));
 #endif

@@ -186,7 +186,7 @@ PUmodel::is_PU_active(double timeNow, double ts, double x, double y, int channel
 
 
 
-// check:active: Check if a PU is transmitting in the intervale [timeNow, timeNow + ts]
+// check:active: Check if a PU is transmitting in the interval [timeNow, timeNow + ts]
 bool
 PUmodel::check_active(double timeNow, double ts, int channel) {
 
