@@ -261,6 +261,9 @@ Mac802_11::Mac802_11() :
 	if (index_%MAX_RADIO == TRANSMITTER_RADIO) {
 		sm_=new SpectrumManager(this, index_/MAX_RADIO, sense_duration, rx_duration);
 		mhSyncSense_.start(sense_duration);
+		rx_in_sensing_ = true;
+		tx_in_retransmitting_ = false;
+		tx_in_callback_ = false;
 	}
 	
 	if (index_%MAX_RADIO == RECEIVER_RADIO)
@@ -783,6 +786,12 @@ Mac802_11::send_timer()
 	 * Sent DATA, but did not receive an ACK packet.
 	 */
 	case MAC_SEND:
+#ifdef LI_MOD
+		if (rx_in_sensing_ == true && index_ % MAX_RADIO == TRANSMITTER_RADIO) {
+			tx_in_retransmitting_ = true;
+			return;
+		}
+#endif
 		RetransmitDATA();
 		break;
 	/*
@@ -1924,6 +1933,14 @@ Mac802_11::recvACK(Packet *p)
 	Packet::free(pktTx_); 
 	pktTx_ = 0;
 	
+#ifdef LI_MOD
+	if (rx_in_sensing_ == true && index_ % MAX_RADIO == TRANSMITTER_RADIO) {
+		mac_log(p);
+		tx_in_callback_ = true;
+		return;
+	}
+#endif
+
 	/*
 	 * Backoff before sending again.
 	 */
@@ -1995,7 +2012,7 @@ Mac802_11::switchqueueHandler()
 	 }
 	
 //	#ifdef MAC_VERBOSE
-		printf(" [SWITCHING INTERFACE] Node: %d Current channel: %d Time:%f \n",index_/MAX_RADIO,new_switchable_channel_, Scheduler::instance().clock());
+	printf(" [SWITCHING INTERFACE] Node: %d Current channel: %d Time:%f \n",index_/MAX_RADIO,new_switchable_channel_, Scheduler::instance().clock());
 //	#endif
 
 	// LI_MOD: Modify here to avoid memory leak.
@@ -2114,7 +2131,19 @@ Mac802_11::syncsenseHandler()
 	// channel_switching_=false;
 	// Restart backoff timer
 	// checkBackoffTimer();
+	rx_in_sensing_ = false;
 	mhSyncTx_.start(rx_duration);
+	if (tx_in_retransmitting_ == true) {
+		RetransmitDATA();
+		tx_resume();
+		tx_in_retransmitting_ = false;
+	}
+	else if (tx_in_callback_ == true) {
+		assert(mhBackoff_.busy() == 0);
+		mhBackoff_.start(cw_, is_idle());
+		tx_resume();
+		tx_in_callback_ == false;
+	}
 }
 
 void
@@ -2124,6 +2153,7 @@ Mac802_11::synctxHandler()
 	// Restart backoff timer
 	// checkBackoffTimer();
 	mhSyncSense_.start(sense_duration);
+	rx_in_sensing_ = true;
 }
 #endif
 

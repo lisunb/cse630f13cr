@@ -553,16 +553,20 @@ private:
 	// Packet Error Rate (PER) of the current channel
 	double			per_;
 #else // LI_MOD
-	SyncSenseTimer mhSyncSense_;
-	SyncTxTimer mhSyncTx_;
-	void syncsenseHandler();
-	void synctxHandler();
+	SyncSenseTimer mhSyncSense_; // timer used to sync with rx radio's sensing
+	SyncTxTimer mhSyncTx_; // timer used to sync with rx radio's receiving
+	void syncsenseHandler(); // actual handler when SyncSenseTimer expires
+	void synctxHandler(); // actual handler when SyncTxTimer expires
 
 	#undef CHANNEL_ERR_CHECK	
 	double per_[MAX_NODES][MAX_NODES];
 	double per_by_pu; // packet loss ratio intefered by pu
 	double sense_duration; // the time used for sensing
 	double rx_duration; // the time used for tx or rx
+
+	bool rx_in_sensing_;
+	bool tx_in_retransmitting_;
+	bool tx_in_callback_;
 #endif
 
 	// CRAHNs Model END
