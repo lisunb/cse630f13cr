@@ -14,7 +14,7 @@ SpectrumManager::SpectrumManager(Mac802_11 *mac, int id): stimer_(this), ttimer_
 	nodeId_=id;
 	
 	// State Initialization
-	pu_on_=false;	
+	pu_on_rx=false;	
 	sensing_=false;
 
 	// Spectrum Module Definition
@@ -31,7 +31,7 @@ SpectrumManager::SpectrumManager(Mac802_11 *mac, int id, double sense_time, doub
 
 	mac_=mac;
 	nodeId_=id;
-	pu_on_=false;
+	pu_on_rx=false;
 	sensing_=false;	
 	
 	// State Initialization
@@ -171,7 +171,7 @@ SpectrumManager::senseHandler() {
 	
 		#ifdef SENSING_VERBOSE_MODE //abdulla
 		printf("[SENSING-DBG] Node %d is on channel %d and PU activity is %s at time: %f\n", 
-				nodeId_, current_channel, (pu_on_)?"true":"false", Scheduler::instance().clock());
+				nodeId_, current_channel, (pu_on_rx)?"true":"false", Scheduler::instance().clock());
 		#endif
 
 	// whether a relay node or how many prev-hop TX
@@ -179,7 +179,7 @@ SpectrumManager::senseHandler() {
 
 	// switch channel randomly even pu didn't show up - this benefits samer - Li
 	if (num_prev_relay == 1) { 
-		if (pu_on_) { // PU detected and this is a relay node 
+		if (pu_on_rx) { // PU detected and this is a relay node 
 			for(int i=0; i < num_prev_relay; i++)
 				printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
 						nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
@@ -189,7 +189,7 @@ SpectrumManager::senseHandler() {
 			if(randomValue < 0.25) {
 				printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
 						nodeId_, current_channel, CURRENT_TIME);
-				pu_on_ = true; 
+				pu_on_rx = true; 
 			}
 		}
 	}
@@ -244,7 +244,7 @@ SpectrumManager::senseHandler() {
 		}
 
 		// RX detected PU or TX detected PU
-		if( pu_on_ == true || pu_on_tx != 0 ) { 
+		if( pu_on_rx == true || pu_on_tx != 0 ) { 
 
 			mobilityMod_->performHandoff(); // Starts handoff timer
 
@@ -259,7 +259,7 @@ SpectrumManager::senseHandler() {
 			}
 
 			// can't find any available channel for all
-			if( next_channel == -1 && pu_on_ == true) {
+			if( next_channel == -1 && pu_on_rx == true) {
 
 				// limark
 				printf(" clean_all_route_channel:\n");
@@ -270,7 +270,7 @@ SpectrumManager::senseHandler() {
 				repository_->clean_route_channel(uflow_list_all, num_prev_relay);
 				mac_->notifyUpperLayer(udst_list_all, num_prev_relay);
 			}
-			else if( next_channel == -1 && pu_on_ == false) {
+			else if( next_channel == -1 && pu_on_rx == false) {
 
 				// limark
 				printf(" clean_route_channel:\n");
@@ -303,24 +303,25 @@ SpectrumManager::senseHandler() {
 					nodeId_,current_channel,next_channel,Scheduler::instance().clock()); 
 			#endif
 			
-			sensing_=false;
-		} // end of if( pu_on_ == true || pu_on_tx != 0 ) 
+		} // end of if( pu_on_rx == true || pu_on_tx != 0 ) 
 		else {
-			sensing_=false;
+			pu_on_rx = false;
 			ttimer_.start(transmit_time_);
+			mac_->checkBackoffTimer(); // Start the backoff timer
 		}
 	} // end of if(num_prev_relay != 0) 
 	else {
-		sensing_=false;
+		pu_on_rx = false;
 		ttimer_.start(transmit_time_);
+		mac_->checkBackoffTimer(); // Start the backoff timer
 
 		#ifdef SENSING_VERBOSE_MODE
 		printf("[SENSING-DBG] Node %d starts transmitting on channel %d at time %f \n",
 				nodeId_,current_channel,Scheduler::instance().clock()); 
 		#endif
 	}
-		
-	mac_->checkBackoffTimer(); // Start the backoff timer
+	
+	sensing_=false;
 }
 
 //transmitHandler: the CR stops transmitting, and starts sensing for PU detection
@@ -329,7 +330,7 @@ SpectrumManager::transmitHandler() {
 
 	int current_channel = repository_->get_recv_channel(nodeId_); 
 	// Perform sensing on the current channel
-	pu_on_= sensingMod_->sense(nodeId_,sense_time_,transmit_time_, current_channel);
+	pu_on_rx = sensingMod_->sense(nodeId_,sense_time_,transmit_time_, current_channel);
 	
 #ifdef LI_MOD
 	// Sense all channels and update the repository
@@ -344,7 +345,7 @@ SpectrumManager::transmitHandler() {
 		#ifdef SENSING_VERBOSE_MODE
 		printf("[SENSING-DBG] Node %d starts sensing on channel %d at time %f \n",
 				nodeId_,current_channel,Scheduler::instance().clock()); 
-		//if (pu_on_) printf("[SENSING-DBG] Node %d sensed pu activity on channel %d \n", nodeId_, current_channel);
+		//if (pu_on_rx) printf("[SENSING-DBG] Node %d sensed pu activity on channel %d \n", nodeId_, current_channel);
 		#endif
 
 	// Stop any current backoff attempt
@@ -355,27 +356,28 @@ SpectrumManager::transmitHandler() {
 void 
 SpectrumManager::endHandoff() {
 	
-#ifndef LI_MOD // LI_MOD
-		int current_channel=repository_->get_recv_channel(nodeId_);
-		// Perform sensing on the new channel
-		pu_on_ = sensingMod_->sense(nodeId_,sense_time_,transmit_time_, current_channel);
-		// Start the sensing interval
-		stimer_.start(sense_time_);
-	
-			#ifdef SENSING_VERBOSE_MODE
-			printf("[SENSING-DBG] Node %d ends handoff on channel %d at time %f \n",
-					nodeId_,current_channel,Scheduler::instance().clock()); 
-			printf("[SENSING-DBG] Node %d starts sensing on channel %d at time %f \n",
-					nodeId_,current_channel,Scheduler::instance().clock()); 
-			#endif
-#else // No LI_MOD
+#ifndef LI_MOD // no LI_MOD
+	int current_channel=repository_->get_recv_channel(nodeId_);
+	// Perform sensing on the new channel
+	pu_on_rx = sensingMod_->sense(nodeId_,sense_time_,transmit_time_, current_channel);
+	// Start the sensing interval
+	stimer_.start(sense_time_);
+
+		#ifdef SENSING_VERBOSE_MODE
+		printf("[SENSING-DBG] Node %d ends handoff on channel %d at time %f \n",
+				nodeId_,current_channel,Scheduler::instance().clock()); 
+		printf("[SENSING-DBG] Node %d starts sensing on channel %d at time %f \n",
+				nodeId_,current_channel,Scheduler::instance().clock()); 
+		#endif
+
+#else // LI_MOD
 
 	// We don't sense the receiving channel anymore since it has been done in sense_all_channels()
-	// i.e. pu_on_ is false now, the rest is the same as in sens 
+	// i.e. pu_on_rx is false now, the rest is the same as in senseHandler() 
 
-	pu_on_ = false;
+	pu_on_rx = false;
 	ttimer_.start( (transmit_time_ - SWITCHING_DELAY) ); // To keep nodes synchronized - Li
-	mac_->checkBackoffTimer();
+	mac_->checkBackoffTimer(); // Start the backoff timer
 #endif 
 }
 

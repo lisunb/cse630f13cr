@@ -114,8 +114,8 @@ class SpectrumManager  {
 
 
 		// State Variables
-		// pu_on_ is true wheter PU activity is detected in the current sensing cycle
-		bool pu_on_;
+		// pu_on_rx is true wheter PU activity is detected in the current sensing cycle
+		bool pu_on_rx;
 		// sensing_ is true wheter a CR is performing sensing
 		bool sensing_;
 		
@@ -125,9 +125,9 @@ class SpectrumManager  {
 		int nodeId_;
 
 #ifdef LI_MOD // LI_MOD
-		int pu_on_tx; 
+		int pu_on_tx; // how many prev-hops nodes are impacted by pu activity 
 		int num_prev_relay;
-		Prev_Hop prev_hop[MAX_FLOWS];
+		Prev_Hop prev_hop[MAX_FLOWS]; // for a node to check how many prev-hop nodes
 #endif
 
 		// Modules

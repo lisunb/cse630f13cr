@@ -1474,7 +1474,6 @@ Mac802_11::recv(Packet *p, Handler *h)
 
 		struct hdr_mac802_11 *dh = HDR_MAC802_11(p);
 		u_int32_t src = ETHER_ADDR(dh->dh_ta);
-		double randomValue=Random::uniform();
 		
 		#ifdef CHANNEL_ERR_CHECK	
 		// check err value
@@ -1486,14 +1485,17 @@ Mac802_11::recv(Packet *p, Handler *h)
 		}
 		#endif // End CHANNEL_ERR_CHECK
 
-		if (randomValue < per_[(index_/MAX_RADIO)][(src/MAX_RADIO)]) {
+		if (!sm_->is_channel_available()) { // check whether rx is sensing or switching
 			hdr->error() = 1;
-		} else {
-			// Check if a PU is active while receiving the packet
-			if (sm_->is_PU_interfering(p)) {
+		}
+		else { // check whether pu is active during receving pkt
+			double randomValue=Random::uniform();
+			if (sm_->is_PU_interfering(p) && randomValue < per_by_pu) 
+				hdr->error() = 1;		 	
+			else { // check whether pkt is impacted by channel loss ratio 
 				randomValue=Random::uniform();
-				if (randomValue < per_by_pu) //Pkt maybe interfered by pu activities.
-					hdr->error() = 1;		 	
+				if (randomValue < per_[(index_/MAX_RADIO)][(src/MAX_RADIO)]) 
+					hdr->error() = 1;
 			}
 		}
 #endif // End LI_MOD
