@@ -110,7 +110,7 @@ SpectrumSensing::sense_all_channels(int id, double sense_time, Repository *repo)
 				// Mark this channel as false
 				repo->mark_channel(id, i, false);
 				// Update the number of PU appearance on that channel 
-				repo->update_sensing_result(id, i);
+				repo->update_active_count(id, i);
 				#ifdef CRP
 				repo->update_nvs_table(id, sense_counter, i, true);
 				#endif // CRP
@@ -128,7 +128,7 @@ SpectrumSensing::sense_all_channels(int id, double sense_time, Repository *repo)
 
 		//update channel utilities 
 		sense_counter++;
-		repo->update_channel_u(id, sense_counter);
+		repo->update_channel_utility(id, sense_counter);
 
 	}
 

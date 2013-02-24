@@ -1075,7 +1075,7 @@ AODV::recvReply(Packet *p) {
 		// Hop is used to check wether I should be the relay
 		int path_id = rp->p_id;
 		int hop_here = rp->rp_hop_count;
-		int my_addr = repository_->get_addr_by_hop(path_id, hop_here);
+		int my_addr = repository_->get_relay_by_hop(path_id, hop_here);
 
 		// If PU appears during forwarding RREP, drop it.
 		if(repository_->check_path_state(path_id) == 0) {
@@ -1090,7 +1090,7 @@ AODV::recvReply(Packet *p) {
 			forward_rrep(p);
 
 			int next_hop = rp->rp_hop_count; //next hop
-			int next_addr = repository_->get_addr_by_hop(path_id, next_hop);
+			int next_addr = repository_->get_relay_by_hop(path_id, next_hop);
 			
 			rt->pc_insert(next_addr);
 
@@ -1302,7 +1302,7 @@ AODV::forward_rrep( Packet *p ) {
 	int path_id = rp->p_id;
 	int hop_forward = rp->rp_hop_count; // hop_forward is the next hop number
 	
-	ch->next_hop_ = repository_->get_addr_by_hop(path_id, hop_forward);
+	ch->next_hop_ = repository_->get_relay_by_hop(path_id, hop_forward);
    	ch->addr_type() = NS_AF_INET;
 	ch->direction() = hdr_cmn::DOWN;
 	ch->channel_ = CONTROL_CHANNEL;
@@ -1488,7 +1488,7 @@ AODV::sendReply(nsaddr_t ipdst, u_int32_t hop_count, nsaddr_t rpdst,
 	#endif //no LI_MOD
 
 	#ifdef LI_MOD
-	ch->next_hop_ = repository_->get_addr_by_hop(path_id, hop_count); //add
+	ch->next_hop_ = repository_->get_relay_by_hop(path_id, hop_count); //add
 	(void)rt; // Just to avoid warning - Li
 	#endif //LI_MOD
 

@@ -60,7 +60,7 @@ SpectrumManager::start() {
 
 	mac_->load_spectrum(current_channel);
 	// set spectrum data pointer only once
-	if (repository_->sd_pointer_set == 0) 
+	if (repository_->is_sd_pointer_set() == false) 
 		repository_->set_sd_pointer(dataMod_);	
 #else 
 	// Load spectrum characteristics (bandwidth, PER, ...)
@@ -175,7 +175,7 @@ SpectrumManager::senseHandler() {
 		#endif
 
 	// whether a relay node or how many prev-hop TX
-	int num_prev_relay = repository_->check_recv_set(nodeId_); // whether relay node
+	int num_prev_relay = repository_->check_rx_set(nodeId_); // whether relay node
 
 	// switch channel randomly even pu didn't show up - this benefits samer - Li
 	if (num_prev_relay == 1) { 
