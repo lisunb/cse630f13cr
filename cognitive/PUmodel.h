@@ -15,7 +15,7 @@
 // Constant value for the PU Mapping file
 // Max number of PUs 
 //# define MAX_PU_USERS 		60
-# define MAX_PU_USERS 		120
+# define MAX_PU_USERS 		90
 // Max number of PU channel spectrum
 # define MAX_CHANNEL 		11
 // Max number of PU-data entry
