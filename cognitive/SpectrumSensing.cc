@@ -130,6 +130,9 @@ SpectrumSensing::sense_all_channels(int id, double sense_time, Repository *repo)
 		sense_counter++;
 		repo->update_channel_utility(id, sense_counter);
 
+		// show channel utilities
+		if (sense_counter == 300 || sense_counter == 500)
+			repo->show_channel_utility(id);
 	}
 
 }

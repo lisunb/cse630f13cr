@@ -563,6 +563,7 @@ private:
 	double per_by_pu; // packet loss ratio intefered by pu
 	double sense_duration; // the time used for sensing
 	double rx_duration; // the time used for tx or rx
+	double miss_detect_ratio; // miss detection ratio on pu show up
 
 	bool rx_in_sensing_;
 	bool tx_in_retransmitting_;

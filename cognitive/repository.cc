@@ -313,13 +313,19 @@ Repository::update_channel_utility(int node, int counter) {
 
 	for(int i = 1; i < MAX_CHANNELS; i++)
 		repository_channel_utility[node][i] = (double)repository_active_count[node][i]/(double)counter;
-
 }
 
+// show PUs' show up ratio on each channel
+void
+Repository::show_channel_utility(int node) {
+	printf("[CHANNEL UTILITY] Node %d, PU Show-Up Ratio: ", node);
+	for (int i = 1; i < MAX_CHANNELS; i++)
+		printf("%f ", repository_channel_utility[node][i]);
+	printf("\n");
+}
 /********************************************************
  * Functions used for joint path and channel allocation
  ********************************************************/
-
 // calulate the link metric value (accroding to a metric)
 double
 Repository::cal_link_wt(int host, int nb, int channel, double time) {

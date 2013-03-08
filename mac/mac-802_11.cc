@@ -254,9 +254,11 @@ Mac802_11::Mac802_11() :
 	///////////////////switchable_policy_=ROUND_ROBIN_ALL_CHANNELS;
 	
 #ifdef LI_MOD // LI_MOD
+
 	per_by_pu = 0.2; //Set the loss ratio caused by pu activites.
 	sense_duration = 0.1;
 	rx_duration = 0.9;
+	miss_detect_ratio = 0.0;
 
 	if (index_%MAX_RADIO == TRANSMITTER_RADIO) {
 		sm_=new SpectrumManager(this, index_/MAX_RADIO, sense_duration, rx_duration);
@@ -328,7 +330,7 @@ Mac802_11::command(int argc, const char*const* argv)
 			//Setting the PUmodel for the CR	
 			if (index_%MAX_RADIO == RECEIVER_RADIO)  {
 				pumodel_ = (PUmodel *) TclObject::lookup(argv[2]);
-				sm_->setPUmodel(0.1, pumodel_);
+				sm_->setPUmodel(miss_detect_ratio, pumodel_);
 			 }
 
 		#ifdef LI_MOD
