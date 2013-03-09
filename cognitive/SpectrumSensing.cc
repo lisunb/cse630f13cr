@@ -105,7 +105,7 @@ SpectrumSensing::sense_all_channels(int id, double sense_time, Repository *repo)
 		// No sensing error model is used here
 		for(int i = 1; i < MAX_CHANNELS; i++) {
  
-			if(pumodel_->is_PU_active(Scheduler::instance().clock(), sense_time, x, y, i)) { 
+			if(pumodel_->is_PU_active(Scheduler::instance().clock(), sense_time, x, y, i)) {
 			// Channel i is found used by a PU
 				// Mark this channel as false
 				repo->mark_channel(id, i, false);
@@ -131,8 +131,16 @@ SpectrumSensing::sense_all_channels(int id, double sense_time, Repository *repo)
 		repo->update_channel_utility(id, sense_counter);
 
 		// show channel utilities
-		if (sense_counter == 300 || sense_counter == 500)
-			repo->show_channel_utility(id);
+		/*
+		if (sense_counter == 600 || sense_counter == 800) {
+			FILE *fd = fopen("printout/channel_utilization.txt", "a");
+			fprintf(fd, "node: %d \t", id);
+			for (int i = 1; i < MAX_CHANNELS; i++)
+				fprintf(fd, "%f\t", repo->get_channel_utility(id, i));
+			fprintf(fd, "\n");
+			fclose(fd);
+		}
+		*/
 	}
 
 }

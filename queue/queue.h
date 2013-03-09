@@ -47,8 +47,7 @@ class Packet;
 class Queue;
 
 
-
-
+#define LI_MOD
 
 class PacketQueue : public TclObject {
 public:

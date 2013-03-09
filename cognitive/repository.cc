@@ -316,13 +316,11 @@ Repository::update_channel_utility(int node, int counter) {
 }
 
 // show PUs' show up ratio on each channel
-void
-Repository::show_channel_utility(int node) {
-	printf("[CHANNEL UTILITY] Node %d, PU Show-Up Ratio: ", node);
-	for (int i = 1; i < MAX_CHANNELS; i++)
-		printf("%f ", repository_channel_utility[node][i]);
-	printf("\n");
+double
+Repository::get_channel_utility(int node, int channel) {
+	return repository_channel_utility[node][channel];
 }
+
 /********************************************************
  * Functions used for joint path and channel allocation
  ********************************************************/

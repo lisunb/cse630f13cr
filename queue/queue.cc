@@ -310,6 +310,25 @@ Queue::resume(int channel)
 	if (p != 0) {
 		target_->recv(p, &qh_);
 	} else {
+#ifdef LI_MOD
+		/*
+		FILE *fd = fopen("printout/queue.txt", "a");
+		fprintf(fd, "Queue is empty at %f\n", now);
+		fclose(fd);
+		*/
+
+		int _next_channel = channel; 
+		for (int i = 0; i < 11; i++) {
+			_next_channel = (_next_channel+1)%11;
+			if (_next_channel != 0) {
+				Packet* p = pq_->dequePacket_from_channel(_next_channel);
+				if (p != 0) {
+					target_->recv(p, &qh_);
+					return;
+				}
+			}
+		}
+#endif
 		if (unblock_on_resume_) {
 			utilUpdate(last_change_, now, blocked_);
 			last_change_ = now;

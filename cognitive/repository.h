@@ -162,7 +162,7 @@ class Repository : public NsObject {
 		#endif
 		void update_active_count(int node, int channel); // update pu showing up times
 		void update_channel_utility(int node, int counter); // update channel utility
-		void show_channel_utility(int node); // show PUs' showup ration on each channel
+		double get_channel_utility(int node, int channel); // show PUs' showup ration on each channel
 		int change_channel(int *list, int node_num, double time); // change channel by metric
 
 		/********************
