@@ -382,14 +382,16 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 		}
 	}
 
-	for(int i = 0; i < nb_counter; i++) { // check each 2-hop nb's sending channel
+	for(int i = 0; i < nb_counter; i++) { // check each 2-hop nb's tx channel
 		if(is_channel_used_for_sending(nb_list[i], channel, current_time))
 			channel_count++;
 	}
 
-	metric_value_ = 1 - ((1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel])
-					*(1 - sd_->spectrum_table_[channel].per[host][nb])/(double)channel_count);
-	#endif // SAMER
+	double av_host = 1.0 - repository_channel_utility[host][channel];
+	double av_nb = 1.0 - repository_channel_utility[nb][channel];
+	double av_min = av_host>av_nb ? av_nb:av_host;
+	metric_value_ = 1.0 - av_min*(1.0 - sd_->spectrum_table_[channel].per[host][nb])/(double)channel_count;
+	#endif // if SAMER
  
 	#ifdef RDM
 	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
@@ -412,19 +414,31 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 	nb = g->edges[node][neighbor].v;
 
 	int channel_ = -1;
-	double weight_ = MAXD; // current minimal weight
 	double t_; // temperature
+#ifndef SAMER
+	double weight_ = MAXD; // current minimal weight
+#else // SAMER
+	double weight_ = 0.0; // cumulative value 
+	double min_w = MAXD; // for SAMER only
+#endif
 
 	if(repository_table_rx[nb].set == 0) {
 	// when recv channel is not set ...
 		for(int i = 1; i < MAX_CHANNELS; i++) {
 
 			t_ = cal_link_wt(node, nb, i, current_time);	
-			
+#ifndef SAMER // not SAMER	
 			if(t_ < weight_) {
 				weight_ = t_;
 				channel_ = i;
 			}
+#else // SAMER
+			weight_ += t_;
+			if(t_ < min_w) {
+				min_w = t_;
+				channel_ = i;
+			}
+#endif
 		}
 	}
 	else {

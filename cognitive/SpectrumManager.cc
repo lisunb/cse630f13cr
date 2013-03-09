@@ -190,6 +190,11 @@ SpectrumManager::senseHandler() {
 				printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
 						nodeId_, current_channel, CURRENT_TIME);
 				pu_on_rx = true; 
+				/*
+				FILE *fd = fopen("adapt.txt", "a");
+				fprintf(fd, "time %f \t node %d\n", CURRENT_TIME, nodeId_);
+				fclose(fd);
+				*/
 			}
 		}
 	}
