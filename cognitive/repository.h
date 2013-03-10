@@ -37,7 +37,7 @@
 // Defines the time a node spends on each queue
 #define QUEUE_UTILIZATION_INTERVAL 	1.0
 // Defines the channel switching delay
-#define SWITCHING_DELAY			0.001
+#define SWITCHING_DELAY			0.005 // close to switch delay plus hello broadcast delay
 // Defines the TIMEOUT_ALIVE to check wheter a node is active on a given channel or not
 #define TIMEOUT_ALIVE			2
 
