@@ -107,11 +107,17 @@ typedef struct { // path
 } repository_entry_path;
 
 #ifdef CRP
-#define NV_PERIOD 50
+// when checking variance, don't count the last off time - the one we are still measuring 
+// 4 = 3(history off time) + 1(the off time being measured)
+#define NVS_SAMPLE 4
 typedef struct {
-	int sensing[NV_PERIOD][MAX_CHANNELS];
+	bool is_off[MAX_CHANNELS];
+	int	num_off[MAX_CHANNELS];
+	double total_off[MAX_CHANNELS];
+	double avg_off[MAX_CHANNELS];
+	double each_off[MAX_CHANNELS][NVS_SAMPLE];
 } nvs_sensing;
-#endif // end CRP
+#endif // if CRP
 
 #endif // end LI_MOD
 //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -157,7 +163,7 @@ class Repository : public NsObject {
 		int check_rx_set(int id); // how many flows it serve
 		void mark_channel(int node, int channel, bool appear); // mark channel in one sensing period
 		#ifdef CRP
-		void update_nvs_table(int node, int counter, int channel, bool appear); 
+		void update_nvs_table(int nodeId, int channelId, bool puOff); 
 		bool check_variance(int node, int channel, double time);
 		#endif
 		void update_active_count(int node, int channel); // update pu showing up times

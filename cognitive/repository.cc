@@ -72,10 +72,13 @@ Repository::Repository() {
 
 	#ifdef CRP
 	for(int i = 0; i < MAX_NODES; i++) { 
-		for(int j=0; j < NVS_PERIOD; j++) { 
-			for(int k=0; k < MAX_CHANNELS; k++) {
-				nvs_table[i].sensing[j][k] = -1;
-			}
+		for(int j = 0; j < MAX_CHANNELS; j++) {
+			nvs_table[i].num_off[j] = 0;
+			nvs_table[i].is_off[j] = false;
+			nvs_table[i].avg_off[j] = 0.0;
+			nvs_table[i].total_off[j] = 0.0;
+			for (int k = 0; k < NVS_SAMPLE; k++)
+				nvs_table[i].each_off[j][k] = 0.0;
 		}
 	}
 	#endif // end CRP
@@ -253,13 +256,37 @@ Repository::mark_channel(int node, int channel, bool appear) {
 
 #ifdef CRP
 void
-Repository::update_nvs_table(int node, int counter, int channel, bool appear) {
+Repository::update_nvs_table(int nodeId, int channelId, bool puOff) {
 
-	int index_ = (counter%NVS_PERIOD);
-	if(appear)
-		nvs_table[node].sensing[index_][channel] = 1;
-	else
-		nvs_table[node].sensing[index_][channel] = 0;
+	int i = nodeId;
+	int j = channelId;
+
+	if (nvs_table[i].is_off[j] == false && puOff == true) { // start a new off sample
+		// mark the channel as off
+		nvs_table[i].is_off[j] = true;
+		// update off counter and total off time
+		nvs_table[i].num_off[j]++;
+		nvs_table[i].total_off[j] += 1.0;
+		// clean and update nvs sample in the next position
+		int nextNvsId = (nvs_table[i].num_off[j])%NVS_SAMPLE;
+		nvs_table[i].each_off[j][nextNvsId] = 1.0;
+	}
+	else if (nvs_table[i].is_off[j] == true && puOff == true) { // continue a off sample
+		// update total off time
+		nvs_table[i].total_off[j]+=1.0;
+		// update nvs sample in current position
+		int currentNvsId = (nvs_table[i].num_off[j])%NVS_SAMPLE;
+		nvs_table[i].each_off[j][currentNvsId] += 1.0;
+	}
+	else if (nvs_table[i].is_off[j] == true && puOff == false) { // finish a off sample
+		// mark the channel as on
+		nvs_table[i].is_off[j] = false;
+		// update avg off time
+		nvs_table[i].avg_off[j] = nvs_table[i].total_off[j] / nvs_table[i].num_off[j];
+	}
+	else { // node is waiting for next sample; do nothing
+		// this equals: nvs_table[i].is_off[j] == false && puOff == false
+	}
 }
 
 bool
