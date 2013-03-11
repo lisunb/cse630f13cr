@@ -308,6 +308,12 @@ Repository::update_average_channel_utility() {
 bool
 Repository::check_channel_average(int node, int channel, double time) {
 	// return false if larger than average 
+	/*
+	FILE *fd = fopen("avg.txt", "a");
+	fprintf(fd, "[t] %f \t[n] %d \t[c] %d \t[avg] %f \t [u] %f\n",
+			time, node, channel, average_channel_utility[channel], repository_channel_utility[node][channel]);
+	fclose(fd);
+	*/
 	if (repository_channel_utility[node][channel] > average_channel_utility[channel])
 		return false;
 	else
@@ -317,7 +323,7 @@ Repository::check_channel_average(int node, int channel, double time) {
 bool
 Repository::check_channel_variance(int node, int channel, double time) {
 	// return false if larger than threshold
-	double var_threshold = 1000.0;
+	double var_threshold = 0.7*pow(nvs_table[node].avg_off[channel], 2);
 	double variance = 0.0;
 	int num_sample = NVS_SAMPLE - 1;
 	// get start Id
@@ -340,6 +346,12 @@ Repository::check_channel_variance(int node, int channel, double time) {
 	}
 	variance /= num_sample;
 	// check with threshold
+	/*
+	FILE *fd = fopen("var.txt", "a");
+	fprintf(fd, "[t] %f \t[n] %d \t[c] %d \t[var] %f\n",
+			time, node, channel, variance);
+	fclose(fd);
+	*/
 	if (variance > var_threshold)
 		return false;
 	else
