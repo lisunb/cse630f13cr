@@ -19,9 +19,9 @@
 // coolest path - highest temp; coolest path - accumulated temp; samer;
 //#define CP_AT
 //#define CP_HT
-#define SAMER
+//#define SAMER
 //#define RDM
-//#define CRP
+#define CRP
 // print debug info on screen 
 #undef LI_DEBUG
 // This number should be the same/larger than the number used in tcl script
@@ -164,7 +164,9 @@ class Repository : public NsObject {
 		void mark_channel(int node, int channel, bool appear); // mark channel in one sensing period
 		#ifdef CRP
 		void update_nvs_table(int nodeId, int channelId, bool puOff); 
-		bool check_variance(int node, int channel, double time);
+		void update_average_channel_utility();
+		bool check_channel_average(int node, int channel);
+		bool check_channel_variance(int node, int channel, double time);
 		#endif
 		void update_active_count(int node, int channel); // update pu showing up times
 		void update_channel_utility(int node, int counter); // update channel utility
@@ -215,6 +217,7 @@ class Repository : public NsObject {
 		int repository_active_count[MAX_NODES][MAX_CHANNELS]; // times of pu show-up
 		double repository_channel_utility[MAX_NODES][MAX_CHANNELS]; // channel utilities
 		#ifdef CRP
+		double average_channel_utility[MAX_CHANNELS];
 		nvs_sensing nvs_table[MAX_NODES];	
 		#endif
 

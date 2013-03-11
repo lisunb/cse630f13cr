@@ -71,7 +71,7 @@ Repository::Repository() {
 	*/
 
 	#ifdef CRP
-	for(int i = 0; i < MAX_NODES; i++) { 
+	for (int i = 0; i < MAX_NODES; i++) { 
 		for(int j = 0; j < MAX_CHANNELS; j++) {
 			nvs_table[i].num_off[j] = 0;
 			nvs_table[i].is_off[j] = false;
@@ -80,6 +80,10 @@ Repository::Repository() {
 			for (int k = 0; k < NVS_SAMPLE; k++)
 				nvs_table[i].each_off[j][k] = 0.0;
 		}
+	}
+
+	for (int i = 0; i < MAX_CHANNELS; i++) {
+		average_channel_utility[i] = 0.0;
 	}
 	#endif // end CRP
 
@@ -284,20 +288,41 @@ Repository::update_nvs_table(int nodeId, int channelId, bool puOff) {
 		// update avg off time
 		nvs_table[i].avg_off[j] = nvs_table[i].total_off[j] / nvs_table[i].num_off[j];
 	}
-	else { // node is waiting for next sample; do nothing
-		// this equals: nvs_table[i].is_off[j] == false && puOff == false
+	else { // equals: nvs_table[i].is_off[j] == false && puOff == false
+		// node is waiting for next sample; do nothing
+	}
+}
+
+void
+Repository::update_average_channel_utility() {
+
+	for (int i = 1; i < MAX_CHANNELS; i++) {
+		average_channel_utility[i] = 0.0;
+		for (int j = 0; j < MAX_NODES; j++) {
+			average_channel_utility[i] += repository_channel_utility[j][i];
+		}
+		average_channel_utility[i] /= MAX_NODES;
 	}
 }
 
 bool
-Repository::check_variance(int node, int channel, double time) {
+Repository::check_channel_average(int node, int channel) {
+
+	if (repository_channel_utility[node][channel] > average_channel_utility[channel])
+		return false;
+	else
+		return true;
+}
+
+bool
+Repository::check_channel_variance(int node, int channel, double time) {
 // return false if exceeding threshold
 
 	double threshold_ = 7.5e+04;
 	double bandwidth_ = 2.0e+06;
-
+/*
 	if(time < 50.0) {
-		printf("[!!!WARNING!!!] check_variance only can be used after 50.0\n");
+		printf("[!!!WARNING!!!] check_channel_variance only can be used after 50.0\n");
 		exit(0);
 	}
 	
@@ -325,8 +350,9 @@ Repository::check_variance(int node, int channel, double time) {
 		return false;
 	else
 		return true;
+*/
 }
-#endif // end CRP
+#endif // if CRP
 
 // Update how many times one channel is found being used by a PU 
 void
@@ -358,15 +384,15 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 	double current_time = time;
 	double metric_value_ = 0.0;
 
-	#ifdef CP_AT
+#ifdef CP_AT
 	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
-	#endif // CP_AT
+#endif // if CP_AT
 	
-	#ifdef CP_HT
+#ifdef CP_HT
 	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
-	#endif // CP_HT
+#endif // if CP_HT
 
-	#ifdef SAMER
+#ifdef SAMER
 	// Searching order is important since we care about transmission interference
 	
 	int channel_count=1;
@@ -418,15 +444,15 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 	double av_nb = 1.0 - repository_channel_utility[nb][channel];
 	double av_min = av_host>av_nb ? av_nb:av_host;
 	metric_value_ = 1.0 - av_min*(1.0 - sd_->spectrum_table_[channel].per[host][nb])/(double)channel_count;
-	#endif // if SAMER
+#endif // if SAMER
  
-	#ifdef RDM
-	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
-	#endif
+#ifdef CRP
+	metric_value_ = repository_channel_utility[host][channel];
+#endif // if CRP
 
-	#ifdef CRP
-	metric_value_ = repository_channel_utility[nb][channel];
-	#endif
+#ifdef RDM
+	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
+#endif
 
 	return metric_value_;
 }
@@ -442,17 +468,15 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 
 	int channel_ = -1;
 	double t_; // temperature
-#ifndef SAMER
+#ifndef SAMER // not SAMER
 	double weight_ = MAXD; // current minimal weight
 #else // SAMER
 	double weight_ = 0.0; // cumulative value 
 	double min_w = MAXD; // for SAMER only
 #endif
 
-	if(repository_table_rx[nb].set == 0) {
-	// when recv channel is not set ...
+	if(repository_table_rx[nb].set == 0) { 	// if recv channel is not set ...
 		for(int i = 1; i < MAX_CHANNELS; i++) {
-
 			t_ = cal_link_wt(node, nb, i, current_time);	
 #ifndef SAMER // not SAMER	
 			if(t_ < weight_) {
@@ -468,31 +492,26 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 #endif
 		}
 	}
-	else {
-	// when recv channel is set ...
+	else { // if recv channel is set ...
 		channel_ = repository_table_rx[nb].recv_channel;
 		weight_ = cal_link_wt(node, nb, channel_, current_time);
 	}
 
-	#ifdef RDM // RDM
-	weight_ = 1.0;
-	#endif
-
-	#ifdef CRP // CRP
-	if(weight_ >= 0.5) {
-	// Check probability of bandwidth availabiltiy
+#ifdef CRP // CRP
+	if (check_channel_average(node, channel_) == false) { // check with average
 		weight_ = MAXD; 
 	}
-	else{
-	// Check variance of bandwidth availabiltiy
-		if(check_variance(nb, channel, time )) {
+	else {
+		if(check_channel_variance(node, channel_, time) == false) // check variance 
+			weight_ = MAXD;
+		else 
 			weight_ = 1.0;
-		}
-		else {
-			weight_ = MAXD; 
-		}
 	}
-	#endif
+#endif // if CRP
+
+#ifdef RDM // RDM
+	weight_ = 1.0;
+#endif
 
 	// store the best weight and channel of for this neighbor	
 	g->edges[node][neighbor].weight = weight_;
@@ -721,6 +740,9 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 // route and channel joint allocation
 int
 Repository::set_route_channel(int src, int dst, double time) {
+#ifdef CRP
+	update_average_channel_utility();
+#endif // if CRP
 
 	double current_time = time;
 	int entry_point, hop_count; 
@@ -800,6 +822,9 @@ Repository::is_common_channel(int channel, int *node, int num) {
 // Change the recv channel when finding a PU using it
 int
 Repository::change_channel(int *list, int node_num, double time) {
+#ifdef CRP
+	update_average_channel_utility();
+#endif // if CRP
 
 	double current_time = time;
 	int node_list[MAX_FLOWS+1]; // 0 is for RX
