@@ -165,7 +165,7 @@ class Repository : public NsObject {
 		#ifdef CRP
 		void update_nvs_table(int nodeId, int channelId, bool puOff); 
 		void update_average_channel_utility();
-		bool check_channel_average(int node, int channel);
+		bool check_channel_average(int node, int channel, double time);
 		bool check_channel_variance(int node, int channel, double time);
 		#endif
 		void update_active_count(int node, int channel); // update pu showing up times

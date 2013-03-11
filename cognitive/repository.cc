@@ -306,8 +306,8 @@ Repository::update_average_channel_utility() {
 }
 
 bool
-Repository::check_channel_average(int node, int channel) {
-
+Repository::check_channel_average(int node, int channel, double time) {
+	// return false if larger than average 
 	if (repository_channel_utility[node][channel] > average_channel_utility[channel])
 		return false;
 	else
@@ -316,41 +316,34 @@ Repository::check_channel_average(int node, int channel) {
 
 bool
 Repository::check_channel_variance(int node, int channel, double time) {
-// return false if exceeding threshold
-
-	double threshold_ = 7.5e+04;
-	double bandwidth_ = 2.0e+06;
-/*
-	if(time < 50.0) {
-		printf("[!!!WARNING!!!] check_channel_variance only can be used after 50.0\n");
-		exit(0);
+	// return false if larger than threshold
+	double var_threshold = 1000.0;
+	double variance = 0.0;
+	int num_sample = NVS_SAMPLE - 1;
+	// get start Id
+	int sampleId;
+	if (nvs_table[node].is_off[channel] == false) { // check nvs-1 samples containing current position
+		sampleId = (nvs_table[node].num_off[channel] + 2) % NVS_SAMPLE;
 	}
-	
-	double beta = (1 - repository_channel_utility[node][channel]); // average off time until now;
-	double ts_off = 0.0; // average off time of one sample
-	double var_sum = 0.0;
-	int one_sample_time = 10;
-	int nv_samples = (NV_PERIOD/one_sample_time);
-	int cnt_sum = 0;
-
-	for(int i=0; i < NV_PERIOD; i++) {
-		cnt_sum+=nvs_table[node].sensing[i][channel];
-		if(i%one_sample_time == 9) {
-			ts_off = 1- (double)cnt_sum/(double)one_sample_time;
-			if(ts_off < beta) {
-				var_sum+=(beta-ts_off)*(beta-ts_off); 
-			}
-			cnt_sum = 0;
+	else { // check nvs-1 samples NOT from current position
+		sampleId = (nvs_table[node].num_off[channel] + 1) % NVS_SAMPLE;
+	}
+	// calculate variance
+	for (int i = 0; i < num_sample; i++) {
+		if (nvs_table[node].each_off[channel][sampleId] > nvs_table[node].avg_off[channel]) {
+			// do nothing
 		}
+		else {
+			variance += pow((nvs_table[node].avg_off[channel] - nvs_table[node].each_off[channel][sampleId]), 2);
+		}
+		sampleId = (sampleId + 1) % NVS_SAMPLE;
 	}
-
-	double bit_sum = bandwidth*var_sum/(double)nv_samples;
-	if(bit_sum > threshold_)
-	// return false if exceeding threshold
+	variance /= num_sample;
+	// check with threshold
+	if (variance > var_threshold)
 		return false;
 	else
 		return true;
-*/
 }
 #endif // if CRP
 
@@ -497,8 +490,8 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 		weight_ = cal_link_wt(node, nb, channel_, current_time);
 	}
 
-#ifdef CRP // CRP
-	if (check_channel_average(node, channel_) == false) { // check with average
+#ifdef CRP
+	if (check_channel_average(node, channel_, time) == false) { // check with average
 		weight_ = MAXD; 
 	}
 	else {
@@ -615,6 +608,13 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 				parent[w] = v;
 			}
 			#endif
+
+			#ifdef CRP
+			if (distance[w] > (distance[v]+weight)) {
+				distance[w] = distance[v]+weight;
+				parent[w] = v;
+			}
+			#endif 
 
 			#ifdef RDM
 			if (distance[w] > (distance[v]+weight)) {
@@ -864,10 +864,15 @@ Repository::change_channel(int *list, int node_num, double time) {
 
 	for(int chan_=1; chan_ < MAX_CHANNELS; chan_++) {
 		if( is_common_channel(chan_, node_list, node_num) ) {
+#ifdef CRP
+			if(check_channel_average(host_, chan_, time) == true && check_channel_variance(host_, chan_, time) == true)
+#endif // if CRP
+			{
 			channel_list[channel_num]=chan_;
 			// limark
 			printf(" %d", chan_);
 			channel_num++;
+			}
 		}
 	}
 
