@@ -287,6 +287,14 @@ Repository::update_nvs_table(int nodeId, int channelId, bool puOff) {
 		nvs_table[i].is_off[j] = false;
 		// update avg off time
 		nvs_table[i].avg_off[j] = nvs_table[i].total_off[j] / nvs_table[i].num_off[j];
+		/*
+		if (i == 0 && j == 1) {
+			FILE *fd = fopen("puoff.txt", "a");
+			int currentNvsId = (nvs_table[i].num_off[j])%NVS_SAMPLE;
+			fprintf(fd, "%f %f\n",nvs_table[i].each_off[j][currentNvsId], nvs_table[i].avg_off[j]);
+			fclose(fd);
+		}
+		*/
 	}
 	else { // equals: nvs_table[i].is_off[j] == false && puOff == false
 		// node is waiting for next sample; do nothing
@@ -323,7 +331,8 @@ Repository::check_channel_average(int node, int channel, double time) {
 bool
 Repository::check_channel_variance(int node, int channel, double time) {
 	// return false if larger than threshold
-	double var_threshold = 0.7*pow(nvs_table[node].avg_off[channel], 2);
+	//double var_threshold = 10000.0;
+	double var_threshold = 0.5*pow(nvs_table[node].avg_off[channel], 2);
 	double variance = 0.0;
 	int num_sample = NVS_SAMPLE - 1;
 	// get start Id
@@ -504,13 +513,13 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 
 #ifdef CRP
 	if (check_channel_average(node, channel_, time) == false) { // check with average
-		weight_ = MAXD; 
+		weight_ = 10.0; 
+	}
+	else if (check_channel_variance(node, channel_, time) == false) { // check variance 
+		weight_ = 10.0;
 	}
 	else {
-		if(check_channel_variance(node, channel_, time) == false) // check variance 
-			weight_ = MAXD;
-		else 
-			weight_ = 1.0;
+		weight_ = 1.0;
 	}
 #endif // if CRP
 
@@ -1077,4 +1086,3 @@ Repository::check_path_state(int id) {
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 // Switchable Interface Implementation END
-

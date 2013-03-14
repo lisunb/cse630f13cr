@@ -108,7 +108,7 @@ typedef struct { // path
 
 #ifdef CRP
 // when checking variance, don't count the last off time - the one we are still measuring 
-// 4 = 3(history off time) + 1(the off time being measured)
+// e.g., 4 = 3(history off time) + 1(the off time being measured)
 #define NVS_SAMPLE 4
 typedef struct {
 	bool is_off[MAX_CHANNELS];
