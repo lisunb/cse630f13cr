@@ -19,9 +19,9 @@
 // coolest path - highest temp; coolest path - accumulated temp; samer;
 //#define CP_AT
 //#define CP_HT
-//#define SAMER
+#define SAMER
 //#define RDM
-#define CRP
+//#define CRP
 // print debug info on screen 
 #undef LI_DEBUG
 // This number should be the same/larger than the number used in tcl script

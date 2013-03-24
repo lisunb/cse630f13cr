@@ -508,7 +508,15 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 	}
 	else { // if recv channel is set ...
 		channel_ = repository_table_rx[nb].recv_channel;
+#ifndef SAMER // not SAMER	
 		weight_ = cal_link_wt(node, nb, channel_, current_time);
+#else // SAMER
+		int route_count = repository_table_rx[nb].set + 1;
+		for(int i = 1; i < MAX_CHANNELS; i++) {
+			t_ = cal_link_wt(node, nb, i, current_time);	
+			weight_ = weight_ + 1 - (1 - t_)/(double)route_count; // shared by route
+		}
+#endif
 	}
 
 #ifdef CRP
