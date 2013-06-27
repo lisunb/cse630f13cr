@@ -42,6 +42,8 @@
 #ifndef ns_WirelessPhy_h
 #define ns_WirelessPhy_h
 
+//#define PT_CONTROL // for LI_MOD only
+
 #include "propagation.h"
 #include "modulation.h"
 #include "omni-antenna.h"
@@ -144,6 +146,10 @@ private:
 
 	friend class Sleep_Timer;
 
+#ifdef PT_CONTROL
+	// tx signal power for each channel
+	double pt_for_channel[11];
+#endif
 };
 
 #endif /* !ns_WirelessPhy_h */

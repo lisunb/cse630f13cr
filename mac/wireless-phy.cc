@@ -131,6 +131,25 @@ WirelessPhy::WirelessPhy() : Phy(), sleep_timer_(this), status_(IDLE)
 	
 	sleep_timer_.resched(1.0);
 
+#ifdef PT_CONTROL
+	// channel 0 (control channel) - 250m
+	// channel 1, 2 - 90m
+	// channel 3, 4 - 130m
+	// channel 5, 6 - 170m
+	// channel 7, 8 - 210m
+	// channel 9, 10 - 250m
+	pt_for_channel[0] = 0.28183815;
+	pt_for_channel[1] = 4.732992e-03;
+	pt_for_channel[2] = 4.732992e-03;
+	pt_for_channel[3] = 2.060341e-02;
+	pt_for_channel[4] = 2.060341e-02;
+	pt_for_channel[5] = 6.025061e-02;
+	pt_for_channel[6] = 6.025061e-02;
+	pt_for_channel[7] = 1.402952e-01;
+	pt_for_channel[8] = 1.402952e-01;
+	pt_for_channel[9] = 0.28183815;
+	pt_for_channel[10] = 0.28183815;
+#endif
 }
 
 int
@@ -302,7 +321,16 @@ WirelessPhy::sendDown(Packet *p)
 	/*
 	 *  Stamp the packet with the interface arguments
 	 */
+
+#ifdef PT_CONTROL 
+	// check channel and adapt tx signal power
+	hdr_cmn* ch = HDR_CMN(p);
+	//	printf("[check_channel] [phy] time: %f, channel: %d, power: %f\n", 
+	//			scheduler::instance().clock(), ch->channel_, pt_for_channel[ch->channel_]);
+	p->txinfo_.stamp((MobileNode*)node(), ant_->copy(), pt_for_channel[ch->channel_], lambda_);
+#else
 	p->txinfo_.stamp((MobileNode*)node(), ant_->copy(), Pt_, lambda_);
+#endif
 	
 	// Send the packet
 	channel_->recv(p, this);
