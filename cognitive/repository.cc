@@ -590,78 +590,76 @@ Repository::construct_graph(graph *g, double time) {
 void 
 Repository::dijkstra(graph *g, int start, int parent[]) {
 
-	int i;				/* counters */
 	bool intree[MAX_NODES];		/* is the vertex in the tree yet? */
 	double distance[MAX_NODES];	/* distance vertex is from start */
-	int v;				/* current vertex to process */
-	int w;				/* candidate next vertex */
-	double weight;			/* edge weight */
-	double dist;			/* best current distance from start */
 
-	for (i = 0; i < g->nvertices; i++) {
+	for (int i = 0; i < g->nvertices; i++) {
 		intree[i] = false;
 		distance[i] = MAXD;
 		parent[i] = -1;
 	}
 
-	distance[start] = 0.0;
-	v = start;
+	// set searching start point (from source node)
+	int cur_node = start; 
+	distance[cur_node] = 0.0;
 
-	while (intree[v] == false) {
-		intree[v] = true;
-		for (i = 0; i < g->degree[v]; i++) {
-			w = g->edges[v][i].v;
-			weight = g->edges[v][i].weight;
+	// start searching procedure
+	while (intree[cur_node] == false) {
+		// delete current node from candidate set
+		intree[cur_node] = true;
+		// check all of this current node's neighbor nodes
+		for (int i = 0; i < g->degree[cur_node]; i++) {
+			int nb_node = g->edges[cur_node][i].v; // neighbor node (candidate next vertex)
+			double weight = g->edges[cur_node][i].weight; // edge length (edge weight)
 			
 			#ifdef CP_AT
-			if (distance[w] > (distance[v]+weight)) {
-				distance[w] = distance[v]+weight;
-				parent[w] = v;
+			if (distance[nb_node] > (distance[cur_node]+weight)) {
+				distance[nb_node] = distance[cur_node]+weight;
+				parent[nb_node] = cur_node;
 			}
 			#endif 
 
 			#ifdef CP_HT
-			double max_t = (distance[v]>weight?distance[v]:weight);
+			double max_t = (distance[cur_node]>weight?distance[cur_node]:weight);
 
-			if (distance[w] > max_t) {
-				distance[w] = max_t;
-				parent[w] = v;
+			if (distance[nb_node] > max_t) {
+				distance[nb_node] = max_t;
+				parent[nb_node] = cur_node;
 			}
 			#endif
 
 			#ifdef SAMER 
-			double max_t = (distance[v]>weight?distance[v]:weight);
+			double max_t = (distance[cur_node]>weight?distance[cur_node]:weight);
 
-			if (distance[w] > max_t) {
-				distance[w] = max_t;
-				parent[w] = v;
+			if (distance[nb_node] > max_t) {
+				distance[nb_node] = max_t;
+				parent[nb_node] = cur_node;
 			}
 			#endif
 
 			#ifdef CRP
-			if (distance[w] > (distance[v]+weight)) {
-				distance[w] = distance[v]+weight;
-				parent[w] = v;
+			if (distance[nb_node] > (distance[cur_node]+weight)) {
+				distance[nb_node] = distance[cur_node]+weight;
+				parent[nb_node] = cur_node;
 			}
 			#endif 
 
 			#ifdef RDM
-			if (distance[w] > (distance[v]+weight)) {
-				distance[w] = distance[v]+weight;
-				parent[w] = v;
+			if (distance[nb_node] > (distance[cur_node]+weight)) {
+				distance[nb_node] = distance[cur_node]+weight;
+				parent[nb_node] = cur_node;
 			}
 			#endif 
 		}
-
-		v = 1;
-		dist = MAXD;
-		for (i = 0; i < g->nvertices; i++) 
-			if ((intree[i] == false) && (dist > distance[i])) {
-				dist = distance[i];
-				v = i;
+		// look for the next "current node"
+		double shortest_dist = MAXD;
+		for (int i = 0; i < g->nvertices; i++) {
+			if ((intree[i] == false) && (distance[i]) < shortest_dist) {
+				shortest_dist = distance[i];
+				cur_node = i;
 			}
+		}
 	}
-/*for (i=1; i<=g->nvertices; i++) printf("%d %d\n",i,distance[i]);*/	
 }
 
 // write dijkstra's result in repository
@@ -778,7 +776,7 @@ Repository::set_route_channel(int src, int dst, double time) {
 	int parent[MAX_NODES];			/* discovery relation */
 	graph g;
 
-	// Check whether we have set route and channel for this src-dst
+	// Step 1 - Check whether we have set route and channel for this src-dst
 	for(int i = 0; i < MAX_FLOWS; i++) {
 		if( repository_table_path[i].is_on == 1 &&
 			repository_table_path[i].dst == dst &&
@@ -787,16 +785,16 @@ Repository::set_route_channel(int src, int dst, double time) {
 		}
 	}
 
-	// Read/Contruct graph with repository
+	// Step 2 - Read/Contruct graph with repository
 	if (construct_graph(&g, current_time) != 0)  {
 		printf("\n[!!!WARNING!!!] Reading graph failed.\n\n");
 		exit(0);
 	}
 
-	// Search the best path
+	// Step 3 - Search the best path
 	dijkstra(&g, src, parent);
 
-	// Record the path & channel allocation results in repository
+	// Step 4 - Record the path & channel allocation results in repository
 	entry_point =  record_path(&g, src, dst, parent); 
 
 	// Print the route info ...
