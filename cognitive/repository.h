@@ -56,7 +56,6 @@
 
 #undef SENSING_VERBOSE_MODE // turn off sensing verbose mode - li
 
-
 // Channel Entry for receiver nodes
 struct repository_entry_recv {
 	// receiving channel
@@ -86,17 +85,18 @@ struct repository_entry_send {
 class SpectrumData;
 
 // Data structures used by Dijkstra Algorithm
-typedef struct { // edge
-	int v;				/* neighboring vertex */
-	double weight;			/* edge weight */
-	int channel;			/* recv channel of neighboring vertex */
+// edge
+typedef struct {
+	int v;							// neighboring vertex
+	int channel;					// recv channel of neighboring vertex
+	double weight;					// edge weight
 } edge;
-
-typedef struct { // graph
-	edge edges[MAX_NODES][MAX_NB];	/* adjacency info */
-	int degree[MAX_NODES];		/* outdegree of each vertex */
-	int nvertices;			/* number of vertices in the graph */
-	int nedges;			/* number of edges in the graph */
+// graph
+typedef struct {
+	int nvertices;					// number of vertices in the graph
+	int nedges;						// number of edges in the graph
+	int degree[MAX_NODES];			// outdegree of each vertex
+	edge edges[MAX_NODES][MAX_NB];	// adjacency info
 } graph;
 
 typedef struct { // path

@@ -135,16 +135,14 @@ struct hdr_aodv_reply {
 	double	        rp_lifetime;            // Lifetime
 
 	double          rp_timestamp;           // when corresponding REQ sent;
-											// used to compute route discovery latency
-	#ifndef LI_MOD
-	int 		rp_channel;
-	#endif // No LI_MOD
 
-	#ifdef LI_MOD
+#ifdef LI_MOD
 	int p_id; //path table id
 	u_int32_t rp_relay[MAX_RELAY_NUM];
 	u_int8_t rp_channel[MAX_RELAY_NUM];
-	#endif // LI_MOD
+#else // no LI_MOD
+	int 		rp_channel;
+#endif
 						
 	inline int size() { 
 		int sz = 0;

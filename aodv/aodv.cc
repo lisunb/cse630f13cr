@@ -222,12 +222,6 @@ BroadcastTimer::handle(Event*) {
 void
 HelloTimer::handle(Event*) {
 
-
-	if (CURRENT_TIME < 0.5)  {
-		Scheduler::instance().schedule(this, &intr, 0.5 + Random::uniform()*0.5);
-		return;
-	}
-
 #ifdef LI_MOD
 
 	if (CURRENT_TIME < 3.0)  {
@@ -236,25 +230,32 @@ HelloTimer::handle(Event*) {
 		return;  
 	}
 
-	return; // We return form here - Li
+	return;
 
-#endif //LI_MOD
+#else // no LI_MOD
+
+	if (CURRENT_TIME < 0.5)  {
+		Scheduler::instance().schedule(this, &intr, 0.5 + Random::uniform()*0.5);
+		return;
+	}
 
 	// Channel Allocation: the fixed receiving channel is decided
 	agent->set_receiver_channel();
 	// HELLO message is broadcasted every HELLO_REFRESH_TIMER seconds
-#ifdef HELLO_MSG_OPTIMIZATION
+	#ifdef HELLO_MSG_OPTIMIZATION
 	if (agent->num_packets_sent_ > PACKET_ACTIVE_THRESHOLD )
 		agent->sendHello();
-#else
+	#else
 		agent->sendHello();
-#endif
+	#endif
 
 	agent->num_packets_sent_=0;
 
 	double interval= (Random::uniform() * 0.5 + HELLO_REFRESH_TIMER);
 	assert(interval >= 0);
 	Scheduler::instance().schedule(this, &intr, interval);
+
+#endif
 }
 
 // CRAHNs Model END
@@ -1598,7 +1599,6 @@ AODV::sendHello() {
 		rh->rp_neighbour_table[i].channel=-1;
 		
 	}
-  
 
 	// CRAHNs Model END
 

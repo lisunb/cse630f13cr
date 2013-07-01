@@ -553,7 +553,7 @@ Repository::construct_graph(graph *g, double time) {
 
 	int i, j;
 
-        for (i = 0; i < MAX_NODES; i++) {  
+	for (i = 0; i < MAX_NODES; i++) {  
 		g->degree[i] = 0;
 		for (j = 0; j < MAX_NB; j++) {
 			g->edges[i][j].v = -1;
@@ -607,10 +607,10 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 	while (intree[cur_node] == false) {
 		// delete current node from candidate set
 		intree[cur_node] = true;
-		// check all of this current node's neighbor nodes
+		// check all of this current node's links
 		for (int i = 0; i < g->degree[cur_node]; i++) {
 			int nb_node = g->edges[cur_node][i].v; // neighbor node (candidate next vertex)
-			double weight = g->edges[cur_node][i].weight; // edge length (edge weight)
+			double weight = g->edges[cur_node][i].weight; // edge weight (edge length)
 			
 			#ifdef CP_AT
 			if (distance[nb_node] > (distance[cur_node]+weight)) {
@@ -895,10 +895,10 @@ Repository::change_channel(int *list, int node_num, double time) {
 			if(check_channel_average(host_, chan_, time) == true && check_channel_variance(host_, chan_, time) == true)
 #endif // if CRP
 			{
-			channel_list[channel_num]=chan_;
-			// limark
-			printf(" %d", chan_);
-			channel_num++;
+				channel_list[channel_num]=chan_;
+				// limark
+				printf(" %d", chan_);
+				channel_num++;
 			}
 		}
 	}
