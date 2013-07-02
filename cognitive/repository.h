@@ -152,6 +152,7 @@ class Repository : public NsObject {
 		void set_sd_pointer(SpectrumData *dataMod_); // set spectrum data pointer  
 		void update_nb(int node, int nb); // update neighbor table
 		void update_nb(int node, int channel, int nb); // update neighbor table
+		void print_nb(int node); // debug - print neighbor and channel info
 
 		/********************************
 		 * channel sensing and switching 

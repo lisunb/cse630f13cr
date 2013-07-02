@@ -249,6 +249,20 @@ Repository::update_nb(int node, int channel, int nb) {
 		repository_node_channel_nb[node][channel][i] = nb;
 }
 
+void
+Repository::print_nb(int node) {
+
+	printf("Neighbor table of node %d:\n", node);
+	for(int i = 0; i < MAX_CHANNELS; i++) {
+		printf("On channel %d: ", i);
+		for(int j = 0; j < MAX_NB; j++) {
+			if(repository_node_channel_nb[node][i][j] != -1)
+				printf("%d ", repository_node_channel_nb[node][i][j]);
+		}
+		printf("\n");
+	}
+}
+
 /**********************************************
  * Functions used in channel sensing
  **********************************************/

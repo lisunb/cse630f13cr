@@ -332,7 +332,7 @@ WirelessPhy::sendDown(Packet *p)
 
 	if(ch->ptype() == PT_AODV) { // AODV pkt
 		struct hdr_aodv *ah = HDR_AODV(p);
-		if (ah->ah_type == AODVTYPE_HELLO) { // adapt tx power for uncommon aodv hello pkt
+		if (ah->ah_type == AODVTYPE_HELLO) { // adapt tx power for aodv hello pkt
 			struct hdr_aodv_hello *rp = HDR_AODV_HELLO(p);
 			tx_channel = rp->tx_channel;
 		}
