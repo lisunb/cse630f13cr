@@ -24,7 +24,10 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-The AODV code developed by the CMU/MONARCH group was optimized and tuned by Samir Das and Mahesh Marina, University of Cincinnati. The work was partially done in Sun Microsystems. Modified for gratuitous replies by Anant Utgikar, 09/16/02.
+The AODV code developed by the CMU/MONARCH group was optimized and tuned by
+Samir Das and Mahesh Marina, University of Cincinnati. The work was partially
+done in Sun Microsystems. Modified for gratuitous replies by Anant Utgikar,
+09/16/02.
 
 */
 
@@ -229,6 +232,15 @@ HelloTimer::handle(Event*) {
 		Scheduler::instance().schedule(this, &intr, CURRENT_TIME + Random::uniform()*0.5);
 		return;  
 	}
+
+	if (CURRENT_TIME < 33.0)  {
+		int channel = CURRENT_TIME/3;
+		if (channel > 10)
+			channel = 10;
+		agent->sendHello(channel);
+		Scheduler::instance().schedule(this, &intr, CURRENT_TIME + Random::uniform()*0.5);
+		return;  
+	}	
 
 	return;
 
@@ -1568,6 +1580,12 @@ AODV::sendHello() {
 	fprintf(stderr, "sending Hello from %d at %.2f\n", index, Scheduler::instance().clock());
 #endif // DEBUG
 
+#ifdef LI_MOD
+	// common hello is sent through common control channel
+	rh->common_hello = 1;
+	rh->tx_channel = 0;
+#endif
+
 	rh->rp_type = AODVTYPE_HELLO;
 	rh->rp_hop_count = 1;
 	rh->rp_dst = index;
@@ -1618,6 +1636,44 @@ AODV::sendHello() {
 	Scheduler::instance().schedule(downtarget_[CONTROL_RADIO], p, 0.0);
 }
 
+#ifdef LI_MOD
+// send hello through data channels
+void
+AODV::sendHello(int channel) {
+
+	Packet *p = Packet::alloc();
+	struct hdr_cmn *ch = HDR_CMN(p);
+	struct hdr_ip *ih = HDR_IP(p);
+	struct hdr_aodv_hello *rh = HDR_AODV_HELLO(p);
+
+	#ifdef DEBUG
+	fprintf(stderr, "sending Hello from %d at %.2f\n", index, Scheduler::instance().clock());
+	#endif // DEBUG
+
+	rh->common_hello = 0; // not a common hello
+	rh->tx_channel = channel; // channel used for this hello
+
+	rh->rp_type = AODVTYPE_HELLO;
+	rh->rp_hop_count = 1;
+	rh->rp_dst = index; // local address
+	rh->rp_channel = repository_->get_recv_channel(index);
+
+	ch->ptype() = PT_AODV;
+	ch->size() = IP_HDR_LEN + rh->size_of_uncommon();
+	ch->iface() = -2;
+	ch->error() = 0;
+	ch->addr_type() = NS_AF_NONE;
+	ch->prev_hop_ = index;          // AODV hack
+
+	ih->saddr() = index;
+	ih->daddr() = IP_BROADCAST;
+	ih->sport() = RT_PORT;
+	ih->dport() = RT_PORT;
+	ih->ttl_ = 1;
+
+	Scheduler::instance().schedule(downtarget_[CONTROL_RADIO], p, 0.0);
+}
+#endif
 
 void
 AODV::recvHello(Packet *p) {
@@ -1628,31 +1684,40 @@ AODV::recvHello(Packet *p) {
 	// CRAHNs Model START
 	// @author:  Marco Di Felice
 
-#ifdef CHANNEL_DEBUG
+	#ifdef CHANNEL_DEBUG
 	printf("---------------------------------------------------- \n");
-	printf(" [HELLO RECEIVED] Node: %d Neighbour 1-hop: %d Channel: %d \n", index, rp->rp_dst, rp->rp_channel); 
-#endif 
-
-	update_neighbourhood(rp->rp_dst,rp->rp_channel,1);
+	printf(" [HELLO RECEIVED] Node: %d Neighbour 1-hop: %d Channel: %d \n", 
+			index, rp->rp_dst, rp->rp_channel); 
+	#endif 
 
 #ifdef LI_MOD
-	repository_->update_nb(index, rp->rp_dst);
-#endif
-
-	// Add 2-hop neighbours information
-	for (int i=0; i<MAX_HELLO_NEIGHBOURS; i++) {
-		if ((rp->rp_neighbour_table[i].id >=0) && (rp->rp_neighbour_table[i].id != index)) {
-			update_neighbourhood(rp->rp_neighbour_table[i].id,rp->rp_neighbour_table[i].channel,2);
-#ifdef CHANNEL_DEBUG
-			printf(" [CHANNEL TABLE] Node %d Neighbour %d Channel: %d \n", index,rp->rp_neighbour_table[i].id, rp->rp_neighbour_table[i].channel); 
-#endif 
-		}
+	if (rp->common_hello == 1) { // hello sent through common control channel
+		repository_->update_nb(index,  rp->rp_dst);
+	} else { // hello sent through data channels
+		//repository_->update_nb(index, rp->tx_channel, rp->rp_dst);
 	}
-	
-#ifdef CHANNEL_DEBUG
-	printf(" ---------------------------------------------------- \n");
-#endif 
-	// CRAHNs Model END
+
+	if (rp->common_hello == 1) 
+#endif
+	{
+		update_neighbourhood(rp->rp_dst,rp->rp_channel,1);
+
+		// Add 2-hop neighbours information
+		for (int i=0; i<MAX_HELLO_NEIGHBOURS; i++) {
+			if ((rp->rp_neighbour_table[i].id >=0) && (rp->rp_neighbour_table[i].id != index)) {
+				update_neighbourhood(rp->rp_neighbour_table[i].id,rp->rp_neighbour_table[i].channel,2);
+				#ifdef CHANNEL_DEBUG
+				printf(" [CHANNEL TABLE] Node %d Neighbour %d Channel: %d \n", 
+						index,rp->rp_neighbour_table[i].id, rp->rp_neighbour_table[i].channel); 
+				#endif
+			}
+		}
+		
+		#ifdef CHANNEL_DEBUG
+		printf(" ---------------------------------------------------- \n");
+		#endif 
+		// CRAHNs Model END
+	}
 
 	Packet::free(p);
 

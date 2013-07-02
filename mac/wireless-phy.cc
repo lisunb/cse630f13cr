@@ -324,10 +324,23 @@ WirelessPhy::sendDown(Packet *p)
 
 #ifdef PT_CONTROL 
 	// check channel and adapt tx signal power
+	int tx_channel = 0; // default - tx power for commmon control channel (maximal)
 	hdr_cmn* ch = HDR_CMN(p);
-	//	printf("[check_channel] [phy] time: %f, channel: %d, power: %f\n", 
-	//			scheduler::instance().clock(), ch->channel_, pt_for_channel[ch->channel_]);
-	p->txinfo_.stamp((MobileNode*)node(), ant_->copy(), pt_for_channel[ch->channel_], lambda_);
+
+	//printf("[check_channel] [phy] time: %f, channel: %d, power: %f\n", 
+	//		scheduler::instance().clock(), ch->channel_, pt_for_channel[ch->channel_]);
+
+	if(ch->ptype() == PT_AODV) { // AODV pkt
+		struct hdr_aodv *ah = HDR_AODV(p);
+		if (ah->ah_type == AODVTYPE_HELLO) { // adapt tx power for uncommon aodv hello pkt
+			struct hdr_aodv_hello *rp = HDR_AODV_HELLO(p);
+		//	tx_channel = rp->tx_channel;
+		}
+	} else { // DATA pkt
+		//tx_channel = ch->channel_;
+	}
+
+	p->txinfo_.stamp((MobileNode*)node(), ant_->copy(), pt_for_channel[tx_channel], lambda_);
 #else
 	p->txinfo_.stamp((MobileNode*)node(), ant_->copy(), Pt_, lambda_);
 #endif

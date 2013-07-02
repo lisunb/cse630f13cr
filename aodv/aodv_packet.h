@@ -24,7 +24,9 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-The AODV code developed by the CMU/MONARCH group was optimized and tuned by Samir Das and Mahesh Marina, University of Cincinnati. The work was partially done in Sun Microsystems.
+The AODV code developed by the CMU/MONARCH group was optimized and tuned by
+Samir Das and Mahesh Marina, University of Cincinnati. The work was partially
+done in Sun Microsystems.
 */
 
 
@@ -64,7 +66,7 @@ The AODV code developed by the CMU/MONARCH group was optimized and tuned by Sami
 // CRAHNs Model END
 
 // Li's Implementation
-#define LI_MOD
+#define LI_MOD 
 
 #ifdef LI_MOD
 #define MAX_RELAY_NUM 10
@@ -216,29 +218,39 @@ struct neighbour_info  {
 
 // Format of the HELLO message 
 struct hdr_aodv_hello {
-        u_int8_t        rp_type;        // Packet Type
+
+        u_int8_t        rp_type;				// Packet Type
         u_int8_t        reserved[2];
         u_int8_t        rp_hop_count;           // Hop Count
         nsaddr_t        rp_dst;                 // Destination IP Address
         nsaddr_t        rp_src;                 // Source IP Address
 
         double          rp_timestamp;           // when corresponding REQ sent;
-						// used to compute route discovery latency
+												// used to compute route discovery latency
 						
-	// current receiving channel on the receiving interface
-	u_int8_t 	rp_channel;
-	// channel table with neighbours' channel information
-	neighbour_info	rp_neighbour_table[MAX_HELLO_NEIGHBOURS];	
+		// current receiving channel on the receiving interface
+		u_int8_t	 	rp_channel;
+		// channel table with neighbours' channel information
+		neighbour_info	rp_neighbour_table[MAX_HELLO_NEIGHBOURS];	
 
+#ifdef LI_MOD
+		// uncommon hello is used for power adaptation on different channels
+        int	common_hello; 
+		int	tx_channel;
+        inline int size_of_uncommon() { 
+			int sz = 0;
+			sz =  sizeof(double) + 6*sizeof(u_int8_t) + 2*sizeof(nsaddr_t);
+			assert (sz >= 0);
+			return sz;
+		}
+#endif
 						
         inline int size() { 
-  
-	 int sz = 0;
-	  	sz =  sizeof(double) + 4*sizeof(u_int8_t) + 2*sizeof(nsaddr_t) + MAX_HELLO_NEIGHBOURS * sizeof(neighbour_info);
-  		assert (sz >= 0);
-		return sz;
-  	}
-
+			int sz = 0;
+			sz =  sizeof(double) + 4*sizeof(u_int8_t) + 2*sizeof(nsaddr_t) + MAX_HELLO_NEIGHBOURS * sizeof(neighbour_info);
+			assert (sz >= 0);
+			return sz;
+		}
 };
 
 // CRAHNs Model END

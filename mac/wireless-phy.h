@@ -42,7 +42,14 @@
 #ifndef ns_WirelessPhy_h
 #define ns_WirelessPhy_h
 
-//#define PT_CONTROL // for LI_MOD only
+#define LI_MOD
+
+#ifdef LI_MOD
+#define PT_CONTROL // for LI_MOD only
+#include <sys/types.h>
+#include "common/packet.h"
+#include "aodv/aodv_packet.h"
+#endif
 
 #include "propagation.h"
 #include "modulation.h"

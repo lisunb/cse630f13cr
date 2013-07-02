@@ -259,12 +259,15 @@ class AODV: public Agent {
          * Packet TX Routines
          */
         void            forward(aodv_rt_entry *rt, Packet *p, double delay);
-		
-		#ifdef LI_MOD
-		void forward_rrep( Packet *p );
-		#endif
 
         void            sendHello(void);
+
+		#ifdef LI_MOD
+        void            sendHello(int channel); // send hello through data channels 
+		void			forward_rrep( Packet *p );
+		#endif
+
+
         void            sendRequest(nsaddr_t dst);
 
         void            sendReply(nsaddr_t ipdst, u_int32_t hop_count,
