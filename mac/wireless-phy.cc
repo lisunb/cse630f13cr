@@ -133,22 +133,22 @@ WirelessPhy::WirelessPhy() : Phy(), sleep_timer_(this), status_(IDLE)
 
 #ifdef PT_CONTROL
 	// channel 0 (control channel) - 250m
-	// channel 1, 2 - 90m
-	// channel 3, 4 - 130m
+	// channel 1, 2 - 250m
+	// channel 3, 4 - 210m
 	// channel 5, 6 - 170m
-	// channel 7, 8 - 210m
-	// channel 9, 10 - 250m
+	// channel 7, 8 - 130m
+	// channel 9, 10 - 90m
 	pt_for_channel[0] = 0.28183815;
-	pt_for_channel[1] = 4.732992e-03;
-	pt_for_channel[2] = 4.732992e-03;
-	pt_for_channel[3] = 2.060341e-02;
-	pt_for_channel[4] = 2.060341e-02;
+	pt_for_channel[1] = 0.28183815;
+	pt_for_channel[2] = 0.28183815;
+	pt_for_channel[3] = 1.402952e-01;
+	pt_for_channel[4] = 1.402952e-01;
 	pt_for_channel[5] = 6.025061e-02;
 	pt_for_channel[6] = 6.025061e-02;
-	pt_for_channel[7] = 1.402952e-01;
-	pt_for_channel[8] = 1.402952e-01;
-	pt_for_channel[9] = 0.28183815;
-	pt_for_channel[10] = 0.28183815;
+	pt_for_channel[7] = 2.060341e-02;
+	pt_for_channel[8] = 2.060341e-02;
+	pt_for_channel[9] = 4.732992e-03;
+	pt_for_channel[10] = 4.732992e-03;
 #endif
 }
 
@@ -334,7 +334,7 @@ WirelessPhy::sendDown(Packet *p)
 		struct hdr_aodv *ah = HDR_AODV(p);
 		if (ah->ah_type == AODVTYPE_HELLO) { // adapt tx power for uncommon aodv hello pkt
 			struct hdr_aodv_hello *rp = HDR_AODV_HELLO(p);
-		//	tx_channel = rp->tx_channel;
+			tx_channel = rp->tx_channel;
 		}
 	} else { // DATA pkt
 		//tx_channel = ch->channel_;

@@ -63,6 +63,13 @@ Repository::Repository() {
 			repository_node_nb[i][j] = -1;
 	}
 
+	for(int i = 0; i < MAX_NODES; i++) { 
+		for(int j = 0; j < MAX_CHANNELS; j++) { 
+			for(int k = 0; k < MAX_NB; k++)
+				repository_node_channel_nb[i][j][k] = -1;
+		}
+	}
+
 	/*
 	// Initialize sensing indicators
 	for(int i = 0; i < MAX_NODES; i++) { 
@@ -221,6 +228,25 @@ Repository::update_nb(int node, int nb) {
 
 	if((is_nb == 0)&&(i != MAX_NB)) 
 		repository_node_nb[node][i] = nb;
+}
+
+void
+Repository::update_nb(int node, int channel, int nb) {
+
+	int i, is_nb = 0;
+
+	//check if this nb exists
+	for(i = 0; i < MAX_NB; i++) {
+		if(repository_node_channel_nb[node][channel][i] == -1)
+			break; // i is the position for this nb;
+		if(repository_node_channel_nb[node][channel][i] == nb) {
+			is_nb = 1;
+			break;
+		}
+	}
+
+	if((is_nb == 0)&&(i != MAX_NB)) 
+		repository_node_channel_nb[node][channel][i] = nb;
 }
 
 /**********************************************

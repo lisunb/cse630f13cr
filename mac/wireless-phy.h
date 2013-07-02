@@ -42,7 +42,7 @@
 #ifndef ns_WirelessPhy_h
 #define ns_WirelessPhy_h
 
-#define LI_MOD
+#define LI_MOD // LI_MOD
 
 #ifdef LI_MOD
 #define PT_CONTROL // for LI_MOD only

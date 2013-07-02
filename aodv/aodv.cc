@@ -1694,7 +1694,7 @@ AODV::recvHello(Packet *p) {
 	if (rp->common_hello == 1) { // hello sent through common control channel
 		repository_->update_nb(index,  rp->rp_dst);
 	} else { // hello sent through data channels
-		//repository_->update_nb(index, rp->tx_channel, rp->rp_dst);
+		repository_->update_nb(index, rp->tx_channel, rp->rp_dst);
 	}
 
 	if (rp->common_hello == 1) 

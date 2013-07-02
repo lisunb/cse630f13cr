@@ -151,6 +151,7 @@ class Repository : public NsObject {
 		bool is_sd_pointer_set();
 		void set_sd_pointer(SpectrumData *dataMod_); // set spectrum data pointer  
 		void update_nb(int node, int nb); // update neighbor table
+		void update_nb(int node, int channel, int nb); // update neighbor table
 
 		/********************************
 		 * channel sensing and switching 
@@ -214,6 +215,7 @@ class Repository : public NsObject {
 		repository_entry_path repository_table_path[MAX_FLOWS]; // all routing routes 
 
 		int repository_node_nb[MAX_NODES][MAX_NB]; // neighbor table
+		int repository_node_channel_nb[MAX_NODES][MAX_CHANNELS][MAX_NB]; // neighbor table
 		int repository_active_count[MAX_NODES][MAX_CHANNELS]; // times of pu show-up
 		double repository_channel_utility[MAX_NODES][MAX_CHANNELS]; // channel utilities
 		#ifdef CRP
