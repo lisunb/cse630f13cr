@@ -228,15 +228,15 @@ HelloTimer::handle(Event*) {
 #ifdef LI_MOD
 
 	// Broadcast hello on common control channel.
-	if (CURRENT_TIME < 5.0)  {
+	if (CURRENT_TIME < 3.0)  {
 		agent->sendHello();
 		Scheduler::instance().schedule(this, &intr, Random::uniform()*0.5);
 		return;  
 	}
 
 	// Broadcast hello on data channels.
-	if (CURRENT_TIME < 55.0)  {
-		int channel = CURRENT_TIME/5;
+	if (CURRENT_TIME < 33.0)  {
+		int channel = CURRENT_TIME/3;
 		if (channel > 10)
 			channel = 10;
 		agent->sendHello(channel);
@@ -244,6 +244,8 @@ HelloTimer::handle(Event*) {
 		Scheduler::instance().schedule(this, &intr, Random::uniform()*0.5);
 		return;  
 	}	
+
+	//exit(0);
 
 	return;
 
@@ -1696,9 +1698,9 @@ AODV::recvHello(Packet *p) {
 #ifdef LI_MOD
 	if (rp->common_hello == 1) { // hello sent through common control channel
 		repository_->update_nb(index, rp->rp_dst); // update old nb table
-		repository_->update_nb(index, 0, rp->rp_dst); // update new nb table
+		repository_->update_nb(index, rp->rp_dst, 0); // update new nb table
 	} else { // hello sent through data channels
-		repository_->update_nb(index, rp->tx_channel, rp->rp_dst); // update new nb table
+		repository_->update_nb(index, rp->rp_dst, rp->tx_channel); // update new nb table
 		//repository_->print_nb(index);
 	}
 

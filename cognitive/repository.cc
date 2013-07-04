@@ -63,10 +63,11 @@ Repository::Repository() {
 			repository_node_nb[i][j] = -1;
 	}
 
-	for(int i = 0; i < MAX_NODES; i++) { 
-		for(int j = 0; j < MAX_CHANNELS; j++) { 
-			for(int k = 0; k < MAX_NB; k++)
-				repository_node_channel_nb[i][j][k] = -1;
+	for(int i = 0; i < MAX_NODES; i++) {
+		for(int j = 0; j < MAX_NB; j++) {
+			repository_table_nb[i][j].node = -1;
+			for(int k = 0; k < MAX_CHANNELS; k++)
+				repository_table_nb[i][j].channel[k] = false;
 		}
 	}
 
@@ -231,33 +232,43 @@ Repository::update_nb(int node, int nb) {
 }
 
 void
-Repository::update_nb(int node, int channel, int nb) {
+Repository::update_nb(int node, int neighbor, int chan) {
 
-	int i, is_nb = 0;
+	int nb, is_set = 0; // nb is index
 
-	//check if this nb exists
-	for(i = 0; i < MAX_NB; i++) {
-		if(repository_node_channel_nb[node][channel][i] == -1)
-			break; // i is the position for this nb;
-		if(repository_node_channel_nb[node][channel][i] == nb) {
-			is_nb = 1;
+	// check if this nb exists
+	for(nb = 0; nb < MAX_NB; nb++) {
+		if (repository_table_nb[node][nb].node == neighbor) {
+			if (repository_table_nb[node][nb].channel[chan])
+				is_set = 1;
 			break;
 		}
+		if(repository_table_nb[node][nb].node == -1)
+			break;
 	}
 
-	if((is_nb == 0)&&(i != MAX_NB)) 
-		repository_node_channel_nb[node][channel][i] = nb;
+	// remember this neighbor and channel
+	if((is_set == 0) && (nb != MAX_NB)) { 
+		repository_table_nb[node][nb].node = neighbor;
+		repository_table_nb[node][nb].channel[chan] = true;
+	}
 }
 
 void
 Repository::print_nb(int node) {
 
-	printf("Neighbor table of node %d:\n", node);
-	for(int i = 0; i < MAX_CHANNELS; i++) {
-		printf("On channel %d: ", i);
-		for(int j = 0; j < MAX_NB; j++) {
-			if(repository_node_channel_nb[node][i][j] != -1)
-				printf("%d ", repository_node_channel_nb[node][i][j]);
+	printf("Neighbor table of node %d: ", node);
+	for(int nb = 0; nb < MAX_NB; nb++) {
+		if(repository_table_nb[node][nb].node != -1)
+			printf("%d ", repository_table_nb[node][nb].node);
+	}
+	printf("\n");
+
+	for(int ch = 0; ch < MAX_CHANNELS; ch++) {
+		printf("On channel %d: ", ch);
+		for(int nb = 0; nb < MAX_NB; nb++) {
+			if((repository_table_nb[node][nb].node != -1) && repository_table_nb[node][nb].channel[ch])
+				printf("%d ", repository_table_nb[node][nb].node);
 		}
 		printf("\n");
 	}

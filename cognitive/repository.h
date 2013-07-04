@@ -85,12 +85,14 @@ struct repository_entry_send {
 class SpectrumData;
 
 // Data structures used by Dijkstra Algorithm
+
 // edge
 typedef struct {
 	int v;							// neighboring vertex
 	int channel;					// recv channel of neighboring vertex
 	double weight;					// edge weight
 } edge;
+
 // graph
 typedef struct {
 	int nvertices;					// number of vertices in the graph
@@ -99,12 +101,19 @@ typedef struct {
 	edge edges[MAX_NODES][MAX_NB];	// adjacency info
 } graph;
 
-typedef struct { // path
+// path
+typedef struct {
 	int is_on;
 	int src; // source
 	int dst; // destination
 	int relay[MAX_HOP];
 } repository_entry_path;
+
+// neighbor
+typedef struct {
+	int node; // node
+	bool channel[MAX_CHANNELS];
+} repository_neighbor;
 
 #ifdef CRP
 // when checking variance, don't count the last off time - the one we are still measuring 
@@ -151,7 +160,7 @@ class Repository : public NsObject {
 		bool is_sd_pointer_set();
 		void set_sd_pointer(SpectrumData *dataMod_); // set spectrum data pointer  
 		void update_nb(int node, int nb); // update neighbor table
-		void update_nb(int node, int channel, int nb); // update neighbor table
+		void update_nb(int node, int neighbor, int chan); // update neighbor table
 		void print_nb(int node); // debug - print neighbor and channel info
 
 		/********************************
@@ -214,9 +223,9 @@ class Repository : public NsObject {
 		repository_entry_recv repository_table_rx[MAX_NODES]; // contains the channels used for receiving by node i 
 		repository_entry_send repository_table_tx[MAX_NODES][MAX_CHANNELS]; // contains the information (active/time) for sending node i and channel j
 		repository_entry_path repository_table_path[MAX_FLOWS]; // all routing routes 
+		repository_neighbor repository_table_nb[MAX_NODES][MAX_NB];
 
 		int repository_node_nb[MAX_NODES][MAX_NB]; // neighbor table
-		int repository_node_channel_nb[MAX_NODES][MAX_CHANNELS][MAX_NB]; // neighbor table
 		int repository_active_count[MAX_NODES][MAX_CHANNELS]; // times of pu show-up
 		double repository_channel_utility[MAX_NODES][MAX_CHANNELS]; // channel utilities
 		#ifdef CRP
