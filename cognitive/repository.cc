@@ -524,48 +524,49 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 
 // calculate weight of each channel btwn neighbors according to a metric
 void
-Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
+Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 
-	double current_time = time;
-
-	int nb; // the real node # of neighbor
-	nb = g->edges[node][neighbor].v;
-
-	int channel_ = -1;
-	double t_; // temperature
-#ifndef SAMER // not SAMER
-	double weight_ = MAXD; // current minimal weight
+	int nb = g->edges[node][neighbor].v; // real node id
+	int channel_ = -1; // best channel
+#ifndef SAMER
+	double weight_ = MAXD; // minimum weight
 #else // SAMER
-	double weight_ = 0.0; // cumulative value 
-	double min_w = MAXD; // for SAMER only
+	double weight_ = 0.0; // cumulative weight
+	double min_w = MAXD; // minimum weight 
 #endif
 
-	if(repository_table_rx[nb].set == 0) { 	// if recv channel is not set ...
-		for(int i = 1; i < MAX_CHANNELS; i++) {
-			t_ = cal_link_wt(node, nb, i, current_time);	
-#ifndef SAMER // not SAMER	
-			if(t_ < weight_) {
-				weight_ = t_;
-				channel_ = i;
-			}
+	if (repository_table_rx[nb].set == 0) {
+	// rx channel is not set
+		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
+			if (repository_table_nb[node][neighbor].channel[ch]) {
+			// this is a neighbor on channel "ch"
+				double t_ = cal_link_wt(node, nb, ch, time);
+#ifndef SAMER
+				if(t_ < weight_) {
+					weight_ = t_;
+					channel_ = ch;
+				}
 #else // SAMER
-			weight_ += t_;
-			if(t_ < min_w) {
-				min_w = t_;
-				channel_ = i;
-			}
+				weight_ += t_;
+				if(t_ < min_w) {
+					min_w = t_;
+					channel_ = ch;
+				}
 #endif
+			}
 		}
-	}
-	else { // if recv channel is set ...
+	} else {
+	// rx channel is already set
 		channel_ = repository_table_rx[nb].recv_channel;
-#ifndef SAMER // not SAMER	
-		weight_ = cal_link_wt(node, nb, channel_, current_time);
+#ifndef SAMER
+		weight_ = cal_link_wt(node, nb, channel_, time);
 #else // SAMER
 		int route_count = repository_table_rx[nb].set + 1;
-		for(int i = 1; i < MAX_CHANNELS; i++) {
-			t_ = cal_link_wt(node, nb, i, current_time);	
-			weight_ = weight_ + 1 - (1 - t_)/(double)route_count; // shared by route
+		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
+			if (repository_table_nb[node][neighbor].channel[ch]) {
+				double t_ = cal_link_wt(node, nb, ch, time);
+				weight_ = weight_ + 1 - (1 - t_)/(double)route_count; // shared by route
+			}
 		}
 #endif
 	}
@@ -593,48 +594,61 @@ Repository::cal_min_wt_link(graph *g, int node, int neighbor, double time) {
 
 // read graph for dijkstra
 // initialize graph; insert edges with min weight link/channel
-int
+void
 Repository::construct_graph(graph *g, double time) {
 
 	double current_time = time;
 
 	// initialize graph
 	g->nvertices = 0;
-        g->nedges = 0;
+	g->nedges = 0;
 
-	int i, j;
-
-	for (i = 0; i < MAX_NODES; i++) {  
+	for (int i = 0; i < MAX_NODES; i++) {  
 		g->degree[i] = 0;
-		for (j = 0; j < MAX_NB; j++) {
+		for (int j = 0; j < MAX_NB; j++) {
 			g->edges[i][j].v = -1;
 			g->edges[i][j].weight = MAXD;
 			g->edges[i][j].channel = -1;
 		}	
 	}
 
-	// insert edges
-	g->nvertices = MAX_NODES; /* assume MAX_NODES is the number of all nodes used in simulation */
+	// check edges
+	g->nvertices = MAX_NODES; // assume MAX_NODES is the number of all nodes used
 
-	for (i = 0; i < g->nvertices; i++) {
-		for (j = 0; j < MAX_NB; j++) {
-			if (repository_node_nb[i][j] == (-1))
+	for (int i = 0; i < g->nvertices; i++) {
+		for (int j = 0; j < MAX_NB; j++) {
+			if (repository_table_nb[i][j].node == (-1))
+			// the end of neighbor list
 				break;
 			if (g->degree[i] == (MAX_NB-1)) {
+			// check the number of neighbor
 				printf("\n[!!!WARNING!!!] Node %d will exceed max degree.\n\n",i);
 				exit(0);
 			}
+			
+			// check whether a valid neighbor
+			int nb_id = repository_table_nb[i][j].node; // real neighbor id
+			int nb_rx_set = repository_table_rx[nb_id].set;
+			int nb_rx_ch = repository_table_rx[nb_id].recv_channel;
 
-			g->edges[i][j].v = repository_node_nb[i][j];
+			if (nb_rx_ch <= 0) {
+			// check correctness of rx channel
+				printf("\n[!!!WARNING!!!] Node %d is using wrong rx channel.\n\n",i);
+				exit(0);
+			}
 
-			// calculate weight with each channel
-			cal_min_wt_link(g, i, j, current_time);
-			g->degree[i] ++;
-			g->nedges ++;		
+			if ((nb_rx_set == 0) ||
+				((nb_rx_set > 0) && repository_table_nb[i][j].channel[nb_rx_ch])) {
+			// neighbor rx is not set or the neighbor is a neighbor on its rx channel
+				// insert node
+				g->edges[i][j].v = nb_id;
+				// calculate link weight and find out the best channel 
+				check_neighbor(g, i, j, current_time);
+				g->degree[i] ++;
+				g->nedges ++;		
+			}
 		}
 	}
-
-	return 0;
 }
 
 // dijkstra by Steven S. Skiena
@@ -837,10 +851,7 @@ Repository::set_route_channel(int src, int dst, double time) {
 	}
 
 	// Step 2 - Read/Contruct graph with repository
-	if (construct_graph(&g, current_time) != 0)  {
-		printf("\n[!!!WARNING!!!] Reading graph failed.\n\n");
-		exit(0);
-	}
+	construct_graph(&g, current_time); 
 
 	// Step 3 - Search the best path
 	dijkstra(&g, src, parent);

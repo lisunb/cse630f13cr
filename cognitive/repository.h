@@ -60,12 +60,11 @@
 struct repository_entry_recv {
 	// receiving channel
 	int recv_channel;
-	
-	#ifdef LI_MOD
+#ifdef LI_MOD
 	int set; // relay indicator
 	int flow[MAX_FLOWS]; // in which flow this node is a relay 
 	bool sense_results[MAX_CHANNELS]; // one round sensing results
-	#endif
+#endif
 };
 
 
@@ -213,9 +212,9 @@ class Repository : public NsObject {
 
 		bool is_common_channel(int channel, int *node, int num); // check channel for a list of nodes
 		// dijkstra algorithm related
-		int construct_graph(graph *g, double time); // construct graph for dijkstra
 		double cal_link_wt(int host, int nb, int channel, double time); // calculate link metric 
-		void cal_min_wt_link(graph *g, int node, int neighbor, double time); // calculate minimum weight link/channel between pairs 
+		void check_neighbor(graph *g, int node, int neighbor, double time); // calculate minimum weight link/channel between pairs 
+		void construct_graph(graph *g, double time); // construct graph for dijkstra
 		void dijkstra(graph *g, int start, int parent[]); // dijkstra by Steven S. Skiena
 		int record_path(graph *g, int start, int end, int parent[]); // record dijkstra result in repository
 
