@@ -522,24 +522,25 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 	return metric_value_;
 }
 
-// calculate weight of each channel btwn neighbors according to a metric
+// calculate link weights between a neighboring pair 
+// and find out the best channel
 void
 Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 
-	int nb = g->edges[node][neighbor].v; // real node id
-	int channel_ = -1; // best channel
+	int nb = g->edges[node][neighbor].v; // real neighbor id
+	int channel_ = -1; // current best channel
 #ifndef SAMER
-	double weight_ = MAXD; // minimum weight
+	double weight_ = MAXD; // current minimum weight
 #else // SAMER
 	double weight_ = 0.0; // cumulative weight
-	double min_w = MAXD; // minimum weight 
+	double min_w = MAXD; // current minimum weight 
 #endif
 
 	if (repository_table_rx[nb].set == 0) {
 	// rx channel is not set
 		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
 			if (repository_table_nb[node][neighbor].channel[ch]) {
-			// this is a neighbor on channel "ch"
+			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb, ch, time);
 #ifndef SAMER
 				if(t_ < weight_) {
@@ -564,6 +565,7 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 		int route_count = repository_table_rx[nb].set + 1;
 		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
 			if (repository_table_nb[node][neighbor].channel[ch]) {
+			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb, ch, time);
 				weight_ = weight_ + 1 - (1 - t_)/(double)route_count; // shared by route
 			}
@@ -617,7 +619,7 @@ Repository::construct_graph(graph *g, double time) {
 
 	for (int i = 0; i < g->nvertices; i++) {
 		for (int j = 0; j < MAX_NB; j++) {
-			if (repository_table_nb[i][j].node == (-1))
+			if (repository_table_nb[i][j].node == -1)
 			// the end of neighbor list
 				break;
 			if (g->degree[i] == (MAX_NB-1)) {
@@ -640,10 +642,8 @@ Repository::construct_graph(graph *g, double time) {
 			if ((nb_rx_set == 0) ||
 				((nb_rx_set > 0) && repository_table_nb[i][j].channel[nb_rx_ch])) {
 			// neighbor rx is not set or the neighbor is a neighbor on its rx channel
-				// insert node
-				g->edges[i][j].v = nb_id;
-				// calculate link weight and find out the best channel 
-				check_neighbor(g, i, j, current_time);
+				g->edges[i][j].v = nb_id; // insert node
+				check_neighbor(g, i, j, current_time); // check channels on this neighbor
 				g->degree[i] ++;
 				g->nedges ++;		
 			}
