@@ -21,8 +21,8 @@
 // coolest path - highest temp; coolest path - accumulated temp; samer;
 //#define CP_AT
 //#define CP_HT
-#define SAMER
-//#define CRP
+//#define SAMER
+#define CRP
 
 // print debug info on screen 
 #undef LI_DEBUG

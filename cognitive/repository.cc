@@ -478,7 +478,7 @@ Repository::get_channel_utility(int node, int channel) {
  * Functions used for joint path and channel allocation
  ********************************************************/
 
-// calulate the link metric value (accroding to a metric)
+// calulate the link metric value accroding to a metric
 double
 Repository::cal_link_wt(int host, int nb, int channel, double time) {
 
@@ -557,7 +557,7 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 	return metric_value_;
 }
 
-// calculate link weights between a neighboring pair 
+// calculate link weights between a neighboring pair
 // and find out the best channel
 void
 Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
@@ -567,7 +567,7 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 	int channel_ = -1; // current best channel
 #ifdef SAMER
 	double weight_ = 0.0; // cumulative weight
-	double min_w = MAXD; // current minimum weight 
+	double min_w = MAXD; // current minimum weight
 #else
 	double weight_ = MAXD; // current minimum weight
 #endif
@@ -581,7 +581,7 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 	// check all channels one by one
 	if (repository_table_rx[nb].set == 0) {
 	// rx channel is not set
-		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
+		for (int ch = 1; ch < MAX_CHANNELS; ch++) {
 			if (repository_table_nb[node][neighbor].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb, ch, time);
@@ -592,13 +592,13 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 #endif
 
 #ifndef SAMER
-				if(t_ < weight_) {
+				if (t_ < weight_) {
 					weight_ = t_;
 					channel_ = ch;
 				}
 #else // SAMER
 				weight_ += t_;
-				if(t_ < min_w) {
+				if (t_ < min_w) {
 					min_w = t_;
 					channel_ = ch;
 				}
@@ -617,7 +617,7 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 	#endif
 #else // SAMER
 		int route_count = repository_table_rx[nb].set + 1;
-		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
+		for (int ch = 1; ch < MAX_CHANNELS; ch++) {
 			if (repository_table_nb[node][neighbor].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb, ch, time);
@@ -632,8 +632,8 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 	g->edges[node][neighbor].channel = channel_;
 }
 
-// read graph for dijkstra
-// initialize graph; insert edges with min weight link/channel
+// construct graph for dijkstra
+// initialize graph and insert edges with min weight link/channel
 void
 Repository::construct_graph(graph *g, double time) {
 
@@ -689,7 +689,6 @@ Repository::construct_graph(graph *g, double time) {
 	}
 }
 
-// dijkstra by Steven S. Skiena
 void 
 Repository::dijkstra(graph *g, int start, int parent[]) {
 
@@ -758,45 +757,36 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 	}
 }
 
-// write dijkstra's result in repository
+// record dijkstra result in repository
 int
 Repository::record_path(graph *g, int start, int end, int parent[]) {
 
-	int i, j;
-	int entry_point;
-	int next_, parent_;
-
-	// ** Find one entry in global route table	
-	for(i = 0; i < MAX_FLOWS; i++) {
-		
-		if( repository_table_path[i].is_on == 0 ) { // Find one entry
+	// find one entry position in global route table	
+	int i; // i is the entry point
+	for (i = 0; i < MAX_FLOWS; i++) {
+		if (repository_table_path[i].is_on == 0) {
 			break;
 		}
-
-		if( i == (MAX_FLOWS-1) ) {
+		if (i == (MAX_FLOWS-1)) {
 			printf("\n[!!!WARNING!!!] The number of flows exceeds the upper limit.\n");
 			exit(0);
 		}
 	}
 
-	entry_point = i;
-
-	// ** Set src, dst & state.
+	// set src, dst and state
 	repository_table_path[i].is_on = 1;
 	repository_table_path[i].src = start;
 	repository_table_path[i].dst = end;	
 
-	// ** Set path in reverse order, i.e. from dst to src.
-	// Both dst and src will show up on this path!
-	j = 0;
-	repository_table_path[i].relay[j] = end; /* set dst as the 0 relay*/	
+	// record nodes for a path in reverse order, i.e., from dst to src
+	// path contains dst and src 
+	int j = 0;
+	repository_table_path[i].relay[j] = end; // record dst
 
-	next_ = end;
-	while( next_ != start ) {	/* set relays */
-		// src will appear as the last relay!
+	int next_ = end;
+	while (next_ != start) { // record the other nodes including src
 		j++;
-		// We don't want too long route.
-		if( j == MAX_HOP ) {
+		if (j == MAX_HOP) {
  			printf("\n[!!!WARNING!!!] hop counts betw %d and %d exceeds upper limit!\n", 
 					start, end);
 			exit(0);
@@ -805,50 +795,46 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 		next_ = parent[next_];
 	}
 
-	// ** Set recv channels and flows this node serve.
-	// src's set value will not increase! 
-	// src's flow table will not have this flow id
+	// record rx channels and serving flows for all nodes
+	// don't need to src's rx channel and serving flow 
 	next_ = end;
-	while( next_ != start ) { // src's set value will not increase! 
+	while (next_ != start) {
 
+		// find entry point in parent table
+		int parent_ = parent[next_];
 		int k;
-		parent_ = parent[next_];
-		for( k = 0; k < g->degree[parent_]; k++ ) {
-			if( g->edges[parent_][k].v == next_ )
+		for (k = 0; k < g->degree[parent_]; k++) {
+			if (g->edges[parent_][k].v == next_)
 				break;
 		}
 
-		// * Set recv channels 
-		if(repository_table_rx[next_].set == 0) {
-			// This node is chosen as a relay node for the first time.	
+		// set rx channels 
+		if (repository_table_rx[next_].set == 0) {
+		// node chosen as a relay for the first time
 			repository_table_rx[next_].recv_channel = g->edges[parent_][k].channel;
 			repository_table_rx[next_].set++;
 		} else {
-			// This node is an intersecting node of multiple flows.
-
-			// In normal conditions, we don't need to set the recv channel again.	
-			if(repository_table_rx[next_].recv_channel != g->edges[parent_][k].channel) {
+		// an intersecting node of multiple flows
+			repository_table_rx[next_].set++;
+			// error check: inconsistent rx channel	
+			if (repository_table_rx[next_].recv_channel != g->edges[parent_][k].channel) {
 				printf("\n[!!!WARNING!!!] The intersecting node %d is set to use another channel.\n", 
 						next_);
 				exit(0);
 			}
-
-			// Record how many flows are using this node.
-			repository_table_rx[next_].set++;
 		}
 
-		// * Set flows this node serve
-		for(int f = 0; f < MAX_FLOWS; f++) { // Error Check
-			// i is the flow index in global route table
-			if(repository_table_rx[next_].flow[f] == i) {
+		// set flows this node serve
+		// error check: duplicated entries
+		for (int f = 0; f < MAX_FLOWS; f++) {
+			if (repository_table_rx[next_].flow[f] == i) { // i is the entry point
 				printf("\n[!!!WARNING!!!] Node: %d shows up twice in route: %d.\n", next_, i);
 				exit(0);
 			}
 		}
-
-		for(int f = 0; f < MAX_FLOWS; f++) {
-			// Find one entry in local flow table.			
-			if(repository_table_rx[next_].flow[f] == -1) {
+		// find local flow entry point
+		for (int f = 0; f < MAX_FLOWS; f++) {
+			if (repository_table_rx[next_].flow[f] == -1) {
 				repository_table_rx[next_].flow[f] = i;
 				break;
 			}
@@ -857,22 +843,18 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 		next_ = parent[next_];		
 	}
 
-	return entry_point;
+	return i; // return entry point
 }	
 
 // route and channel joint allocation
 int
 Repository::set_route_channel(int src, int dst, double time) {
+
 #ifdef CRP
 	update_average_channel_utility();
-#endif // if CRP
+#endif
 
-	double current_time = time;
-	int entry_point, hop_count; 
-	int parent[MAX_NODES];			/* discovery relation */
-	graph g;
-
-	// Step 1 - Check whether we have set route and channel for this src-dst
+	// Step 1 - Check whether we have set route and channel for this src-dst.
 	for(int i = 0; i < MAX_FLOWS; i++) {
 		if( repository_table_path[i].is_on == 1 &&
 			repository_table_path[i].dst == dst &&
@@ -881,38 +863,41 @@ Repository::set_route_channel(int src, int dst, double time) {
 		}
 	}
 
-	// Step 2 - Read/Contruct graph with repository
-	construct_graph(&g, current_time); 
+	// Step 2 - Read/Contruct graph with repository.
+	graph g;
+	construct_graph(&g, time); 
 
-	// Step 3 - Search the best path
+	// Step 3 - Search the best path.
+	int parent[MAX_NODES]; // discovery relation
 	dijkstra(&g, src, parent);
 
-	// Step 4 - Record the path & channel allocation results in repository
-	entry_point =  record_path(&g, src, dst, parent); 
+	// Step 4 - Record the path & channel allocation results in repository.
+	int entry_point = record_path(&g, src, dst, parent);
 
-	// Print the route info ...
-	for(hop_count=0; hop_count < MAX_HOP; hop_count++) {
+	// print route information
+	int hop_count; 
+	for (hop_count = 0; hop_count < MAX_HOP; hop_count++) {
 		if(repository_table_path[entry_point].relay[hop_count] == -1)
 			break;
 	}
 	printf("[ROUTE INFO] Src: %d Dst: %d Time: %f Hop: %d Relay:", src, dst, time, (hop_count -1));
-	for(int i=(hop_count -1); i >= 0; i--)
+	for (int i = (hop_count -1); i >= 0; i--)
 		printf(" %d", repository_table_path[entry_point].relay[i]);
 	printf(" Channel:");
-	for(int i=(hop_count -1); i >= 0; i--)
+	for (int i = (hop_count -1); i >= 0; i--)
 		printf(" %d", repository_table_rx[(repository_table_path[entry_point].relay[i])].recv_channel);
 	printf("\n");
 
-			#ifdef LI_DEBUG
-			printf("Print the Number of PU Appearance on Each Channel.\n");
-			for(int i = 0; i < MAX_NODES; i++) {
-				printf("Observation of Node %d:\n", i);
-				for(int j = 1; j < MAX_CHANNELS; j++) {
-					printf("%d ", repository_active_count[i][j]);
-				}
-				printf("\n");
-			}
-			#endif // LI_DEBUG
+	#ifdef LI_DEBUG
+	printf("Print the Number of PU Appearance on Each Channel.\n");
+	for (int i = 0; i < MAX_NODES; i++) {
+		printf("Observation of Node %d:\n", i);
+		for (int j = 1; j < MAX_CHANNELS; j++) {
+			printf("%d ", repository_active_count[i][j]);
+		}
+		printf("\n");
+	}
+	#endif
 
 	return 0;
 }
@@ -942,6 +927,7 @@ Repository::is_common_channel(int channel, int *node, int num) {
 // Change rx channel when finding a PU using it
 int
 Repository::change_channel(int *list, int node_num, double time) {
+
 #ifdef CRP
 	update_average_channel_utility();
 #endif // if CRP
