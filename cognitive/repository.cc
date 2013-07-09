@@ -95,7 +95,7 @@ Repository::Repository() {
 	}
 
 	// initialize channel weights
-	double max_dist = 250.0
+	double max_dist = 250.0;
 	channel_wt[0] = max_dist / max_dist;
 	for (int i = 1; i < MAX_CHANNELS; i++) {
 		int t = (i + 1) / 2;
@@ -584,7 +584,7 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 				double t_ = cal_link_wt(node, nb, ch, time);
 #ifdef CRP // CRP
 				if (!channel_st[ch]) {
-					t_ = max_lin_wt;
+					t_ = max_link_wt;
 				}
 #endif
 
