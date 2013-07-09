@@ -487,56 +487,59 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 
 #ifdef CP_AT
 	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
-#endif // if CP_AT
+#endif // end if CP_AT
 	
 #ifdef CP_HT
 	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
-#endif // if CP_HT
+#endif // end if CP_HT
 
 #ifdef SAMER
-	// Searching order is important since we care about transmission interference
-	
-	int channel_count=1;
-	// Count how mamy NBs are using this channel in 2 hops
-	int nb1, nb2; // 1-hop nb, 2-hop nb
-	int nb1_num=0; // number of 1-hop nb
-	int nb_counter=0; // number of 2-hop nb
-	bool appear=false;
+	// searching order is important since we care about transmission interference
+	// count how mamy NBs are using this channel in 2 hops
+	int nb_counter = 0; // number of 1-hop and 2-hop nb
 	int nb_list[MAX_NB]; // 2-hop nb list
-	for(int i=0; i < MAX_NB; i++)
-		nb_list[i]=-1;
+	for (int i = 0; i < MAX_NB; i++)
+		nb_list[i] = -1;
 
-	for(int i=0; i < MAX_NB; i++) { // search 1-hop nb
-		if(repository_node_nb[host][i] == -1)
+	// search 1-hop nb
+	for (int i = 0; i < MAX_NB; i++) {
+		if (repository_table_nb[host][i].node == -1)
 			break;
-		nb_counter++;
-		nb_list[i]=repository_node_nb[host][i];
+		if (repository_table_nb[host][i].channel[channel]) {
+			nb_list[i] = repository_table_nb[host][i].node;
+			nb_counter++;
+		}
 	}
 
-	nb1_num = nb_counter;
-	for(int i=0; i < nb1_num; i++) { // search 2-hop nb
-		nb1 = nb_list[i];
-		for(int j=0; j < MAX_NB; j++) {
-			if(repository_node_nb[nb1][j] == -1)
+	// search 2-hop nb
+	int nb1_num = nb_counter;
+	for (int i = 0; i < nb1_num; i++) {
+		int nb1 = nb_list[i]; // 1-hop nb
+		for (int j = 0; j < MAX_NB; j++) {
+			if (repository_table_nb[nb1][j].node == -1)
 				break;
-			nb2 = repository_node_nb[nb1][j];
-			for(int k=0; k < nb_counter; k++) { // whether it is in nb_list
-				if(nb_list[k] == nb2)
-					appear=true;
-			}
-			if(appear == false && nb2 != host) { // should not have host
-				nb_list[nb_counter] = nb2;
-				nb_counter++;
-			}
-			appear=false;
-			if(nb_counter == MAX_NB) {
-				printf("[!!!WARNING!!!] 2-hop nb num exceed upper limit");
-				exit(0);
+			if (repository_table_nb[nb1][j].channel[channel]) {
+				int nb2 = repository_table_nb[nb1][j].node; // 2-hop nb
+				bool appear = false;
+				for (int k = 0; k < nb_counter; k++) { // whether in nb_list
+					if (nb_list[k] == nb2)
+						appear = true;
+				}
+				if (appear == false && nb2 != host) {
+					nb_list[nb_counter] = nb2;
+					nb_counter++;
+				}
+				if (nb_counter == MAX_NB) {
+					printf("[!!!WARNING!!!] 2-hop nb num exceed upper limit.\n");
+					exit(0);
+				}
 			}
 		}
 	}
 
-	for(int i = 0; i < nb_counter; i++) { // check each 2-hop nb's tx channel
+	// check 2-hop tx interference
+	int channel_count = 1;
+	for(int i = 0; i < nb_counter; i++) {
 		if(is_channel_used_for_sending(nb_list[i], channel, current_time))
 			channel_count++;
 	}
@@ -545,11 +548,11 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 	double av_nb = 1.0 - repository_channel_utility[nb][channel];
 	double av_min = av_host>av_nb ? av_nb:av_host;
 	metric_value_ = 1.0 - av_min*(1.0 - sd_->spectrum_table_[channel].per[host][nb])/(double)channel_count;
-#endif // if SAMER
+#endif // end if SAMER
  
 #ifdef CRP
 	metric_value_ = 1.0 - channel_wt[channel];
-#endif // if CRP
+#endif // end if CRP
 
 	return metric_value_;
 }
@@ -659,7 +662,7 @@ Repository::construct_graph(graph *g, double time) {
 				break;
 			if (g->degree[i] == (MAX_NB-1)) {
 			// check the number of neighbor
-				printf("\n[!!!WARNING!!!] Node %d will exceed max degree.\n\n",i);
+				printf("\n[!!!WARNING!!!] Node %d will exceed max degree.\n",i);
 				exit(0);
 			}
 			
@@ -670,7 +673,7 @@ Repository::construct_graph(graph *g, double time) {
 
 			if (nb_rx_ch <= 0) {
 			// check correctness of rx channel
-				printf("\n[!!!WARNING!!!] Node %d is using wrong rx channel.\n\n",i);
+				printf("\n[!!!WARNING!!!] Node %d is using wrong rx channel.\n",i);
 				exit(0);
 			}
 
@@ -771,7 +774,7 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 		}
 
 		if( i == (MAX_FLOWS-1) ) {
-			printf("\n[!!!WARNING!!!] The number of flows exceeds the upper limit\n\n");
+			printf("\n[!!!WARNING!!!] The number of flows exceeds the upper limit.\n");
 			exit(0);
 		}
 	}
@@ -794,7 +797,7 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 		j++;
 		// We don't want too long route.
 		if( j == MAX_HOP ) {
- 			printf("\n[!!!WARNING!!!] hop counts betw %d and %d exceeds upper limit!\n\n", 
+ 			printf("\n[!!!WARNING!!!] hop counts betw %d and %d exceeds upper limit!\n", 
 					start, end);
 			exit(0);
 		}
@@ -838,7 +841,7 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 		for(int f = 0; f < MAX_FLOWS; f++) { // Error Check
 			// i is the flow index in global route table
 			if(repository_table_rx[next_].flow[f] == i) {
-				printf("\n[!!!WARNING!!!] Node: %d shows up twice in route: %d.\n\n", next_, i);
+				printf("\n[!!!WARNING!!!] Node: %d shows up twice in route: %d.\n", next_, i);
 				exit(0);
 			}
 		}
@@ -967,7 +970,7 @@ Repository::change_channel(int *list, int node_num, double time) {
 
 	// Error Check
 	if( repository_table_rx[host_].set != node_num - 1 ) {
-		printf("\n[!!!WARNING!!!] node %d set: %d node_num: %d not correct while changing channel.\n\n",
+		printf("\n[!!!WARNING!!!] node %d set: %d node_num: %d not correct while changing channel.\n",
 				node_list[0], repository_table_rx[host_].set, node_num);
 		exit(0);
 	}
@@ -1129,7 +1132,7 @@ Repository::clean_all_route_channel(int node) {
 
 	// Error Check
 	if(flow_cnt != num_flow) {
-		printf("\n[!!!WARNING!!!] set in repository_table_rx is not correct while cleaning.\n\n");
+		printf("\n[!!!WARNING!!!] set in repository_table_rx is not correct while cleaning.\n");
 		exit(0);
 	}
 

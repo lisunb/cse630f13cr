@@ -13,22 +13,27 @@
 
 // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< lsun3
 #define LI_MOD
+
 // Li's Implementation
 #ifdef LI_MOD
+
 // define one spectrum-aware routing metric
 // coolest path - highest temp; coolest path - accumulated temp; samer;
 //#define CP_AT
 //#define CP_HT
-//#define SAMER
-#define CRP
+#define SAMER
+//#define CRP
+
 // print debug info on screen 
 #undef LI_DEBUG
+
 // This number should be the same/larger than the number used in tcl script
 #define MAX_NODES	49			/* maximum number of vertices for dijkstra */
 #define MAX_NB		MAX_NODES	/* maximum outdegree of a vertex */
 #define MAX_FLOWS	5			/* maximum src-dst pairs */
 #define MAX_HOP 	26			/* maximun hop counts */
 #define MAXD		1000.0		/* maximum distance */
+
 #endif // LI_MOD
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	
