@@ -20,7 +20,6 @@
 //#define CP_AT
 //#define CP_HT
 #define SAMER
-//#define RDM
 //#define CRP
 // print debug info on screen 
 #undef LI_DEBUG
@@ -29,7 +28,7 @@
 #define MAX_NB		MAX_NODES	/* maximum outdegree of a vertex */
 #define MAX_FLOWS	5			/* maximum src-dst pairs */
 #define MAX_HOP 	26			/* maximun hop counts */
-#define MAXD		100.0		/* maximum distance */
+#define MAXD		1000.0		/* maximum distance */
 #endif // LI_MOD
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 	
@@ -175,8 +174,9 @@ class Repository : public NsObject {
 		#ifdef CRP
 		void update_nvs_table(int nodeId, int channelId, bool puOff); 
 		void update_average_channel_utility();
-		bool check_channel_average(int node, int channel, double time);
-		bool check_channel_variance(int node, int channel, double time);
+		bool check_channel_average(int node, int channel);
+		bool check_channel_variance(int node, int channel);
+		void check_channel_st(bool *st_list, int node);
 		#endif
 		void update_active_count(int node, int channel); // update pu showing up times
 		void update_channel_utility(int node, int counter); // update channel utility
@@ -228,8 +228,9 @@ class Repository : public NsObject {
 		int repository_active_count[MAX_NODES][MAX_CHANNELS]; // times of pu show-up
 		double repository_channel_utility[MAX_NODES][MAX_CHANNELS]; // channel utilities
 		#ifdef CRP
-		double average_channel_utility[MAX_CHANNELS];
-		nvs_sensing nvs_table[MAX_NODES];	
+		double channel_wt[MAX_CHANNELS];
+		double average_channel_utility[MAX_CHANNELS]; // channel utility threshold
+		nvs_sensing nvs_table[MAX_NODES];
 		#endif
 
 		bool sd_pointer_set_; // indicator of setting spectrum data pointer

@@ -93,6 +93,15 @@ Repository::Repository() {
 	for (int i = 0; i < MAX_CHANNELS; i++) {
 		average_channel_utility[i] = 0.0;
 	}
+
+	// initialize channel weights
+	double max_dist = 250.0
+	channel_wt[0] = max_dist / max_dist;
+	for (int i = 1; i < MAX_CHANNELS; i++) {
+		int t = (i + 1) / 2;
+		channel_wt[i] = (max_dist - (double)(t-1) * 40.0) / max_dist;
+	}
+
 	#endif // end CRP
 
 	// Initialize route tables, path i, hop j
@@ -365,7 +374,7 @@ Repository::update_average_channel_utility() {
 }
 
 bool
-Repository::check_channel_average(int node, int channel, double time) {
+Repository::check_channel_average(int node, int channel) {
 	// return false if larger than average 
 	/*
 	FILE *fd = fopen("avg.txt", "a");
@@ -380,7 +389,7 @@ Repository::check_channel_average(int node, int channel, double time) {
 }
 
 bool
-Repository::check_channel_variance(int node, int channel, double time) {
+Repository::check_channel_variance(int node, int channel) {
 	// return false if larger than threshold
 	//double var_threshold = 10000.0;
 	double var_threshold = 0.5*pow(nvs_table[node].avg_off[channel], 2);
@@ -417,6 +426,32 @@ Repository::check_channel_variance(int node, int channel, double time) {
 	else
 		return true;
 }
+
+// check whether channels satisfies crp constraints
+void
+Repository::check_channel_st(bool *st_list, int node) {
+
+	st_list[0] = false;
+
+	for (int ch = 1; ch < MAX_CHANNELS; ch++) {
+		if ((check_channel_average(node, ch) == false) ||
+			(check_channel_variance(node, ch) == false)) {
+		// check average and variance
+			st_list[ch] = false;
+		} else if (ch % 2 == 0) { 
+		// the last channel in a spectrum band
+			if (repository_channel_utility[node][ch] < repository_channel_utility[node][(ch-1)]) {
+					st_list[ch] = true;
+					st_list[(ch-1)] = false;
+			} else {
+				st_list[ch] = false;
+			}
+		} else {
+		// the other channels in a spectrum band
+			st_list[ch] = true;
+		}
+	}
+}
 #endif // if CRP
 
 // Update how many times one channel is found being used by a PU 
@@ -442,6 +477,7 @@ Repository::get_channel_utility(int node, int channel) {
 /********************************************************
  * Functions used for joint path and channel allocation
  ********************************************************/
+
 // calulate the link metric value (accroding to a metric)
 double
 Repository::cal_link_wt(int host, int nb, int channel, double time) {
@@ -512,12 +548,8 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 #endif // if SAMER
  
 #ifdef CRP
-	metric_value_ = repository_channel_utility[host][channel];
+	metric_value_ = 1.0 - channel_wt[channel];
 #endif // if CRP
-
-#ifdef RDM
-	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
-#endif
 
 	return metric_value_;
 }
@@ -527,21 +559,35 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 void
 Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 
+	// variable initialization
 	int nb = g->edges[node][neighbor].v; // real neighbor id
 	int channel_ = -1; // current best channel
-#ifndef SAMER
-	double weight_ = MAXD; // current minimum weight
-#else // SAMER
+#ifdef SAMER
 	double weight_ = 0.0; // cumulative weight
 	double min_w = MAXD; // current minimum weight 
+#else
+	double weight_ = MAXD; // current minimum weight
 #endif
 
+#ifdef CRP // check if a channel satisfies crp constraints
+	bool max_link_wt = 100.0;
+	bool channel_st[MAX_CHANNELS];
+	check_channel_st(channel_st, node);
+#endif
+
+	// check all channels one by one
 	if (repository_table_rx[nb].set == 0) {
 	// rx channel is not set
 		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
 			if (repository_table_nb[node][neighbor].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb, ch, time);
+#ifdef CRP // CRP
+				if (!channel_st[ch]) {
+					t_ = max_lin_wt;
+				}
+#endif
+
 #ifndef SAMER
 				if(t_ < weight_) {
 					weight_ = t_;
@@ -561,6 +607,11 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 		channel_ = repository_table_rx[nb].recv_channel;
 #ifndef SAMER
 		weight_ = cal_link_wt(node, nb, channel_, time);
+	#ifdef CRP
+		if (!channel_st[channel_]) {
+			weight_ = max_link_wt;
+		}
+	#endif
 #else // SAMER
 		int route_count = repository_table_rx[nb].set + 1;
 		for(int ch = 1; ch < MAX_CHANNELS; ch++) {
@@ -572,22 +623,6 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 		}
 #endif
 	}
-
-#ifdef CRP
-	if (check_channel_average(node, channel_, time) == false) { // check with average
-		weight_ = 10.0; 
-	}
-	else if (check_channel_variance(node, channel_, time) == false) { // check variance 
-		weight_ = 10.0;
-	}
-	else {
-		weight_ = 1.0;
-	}
-#endif // if CRP
-
-#ifdef RDM // RDM
-	weight_ = 1.0;
-#endif
 
 	// store the best weight and channel of for this neighbor	
 	g->edges[node][neighbor].weight = weight_;
@@ -703,13 +738,6 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 			#endif
 
 			#ifdef CRP
-			if (distance[nb_node] > (distance[cur_node]+weight)) {
-				distance[nb_node] = distance[cur_node]+weight;
-				parent[nb_node] = cur_node;
-			}
-			#endif 
-
-			#ifdef RDM
 			if (distance[nb_node] > (distance[cur_node]+weight)) {
 				distance[nb_node] = distance[cur_node]+weight;
 				parent[nb_node] = cur_node;
@@ -908,7 +936,7 @@ Repository::is_common_channel(int channel, int *node, int num) {
 	return available;
 }
 
-// Change the recv channel when finding a PU using it
+// Change rx channel when finding a PU using it
 int
 Repository::change_channel(int *list, int node_num, double time) {
 #ifdef CRP
@@ -954,7 +982,7 @@ Repository::change_channel(int *list, int node_num, double time) {
 	for(int chan_=1; chan_ < MAX_CHANNELS; chan_++) {
 		if( is_common_channel(chan_, node_list, node_num) ) {
 #ifdef CRP
-			if(check_channel_average(host_, chan_, time) == true && check_channel_variance(host_, chan_, time) == true)
+			if(check_channel_average(host_, chan_) == true && check_channel_variance(host_, chan_) == true)
 #endif // if CRP
 			{
 				channel_list[channel_num]=chan_;
