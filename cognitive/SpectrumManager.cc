@@ -152,9 +152,10 @@ SpectrumManager::setSpectrumData(SpectrumData *sd) {
  * *******************************************************/
 
 /*
- * senseHandler: handler for sensing timer. 
- * Check if PU was detected during the last sensing interval, in case ask the spectrumDecision to switch to a new channel.
- * In case of channel switching, use Spectrum Mobility to perform handoff, and notify the event to the upper layers.
+ * senseHandler: handler for sensing timer. Check if PU was detected during the
+ * last sensing interval, in case ask the spectrumDecision to switch to a new
+ * channel. In case of channel switching, use Spectrum Mobility to perform
+ * handoff, and notify the event to the upper layers.
  */
 
 void 
@@ -163,49 +164,49 @@ SpectrumManager::senseHandler() {
 	int current_channel = repository_->get_recv_channel(nodeId_);
 	int next_channel = -1;
 	
-	// Error Check
-	if(current_channel == 0) {
+	if (current_channel == 0) { // error check: using control channel for data
 		printf("[!!!WARNING!!!] node: %d is using control channel.\n", nodeId_);
 		exit(0);
 	}
 	
-		#ifdef SENSING_VERBOSE_MODE //abdulla
-		printf("[SENSING-DBG] Node %d is on channel %d and PU activity is %s at time: %f\n", 
-				nodeId_, current_channel, (pu_on_rx)?"true":"false", Scheduler::instance().clock());
-		#endif
+	#ifdef SENSING_VERBOSE_MODE // abdulla
+	printf("[SENSING-DBG] Node %d is on channel %d and PU activity is %s at time: %f\n", 
+			nodeId_, current_channel, (pu_on_rx)?"true":"false", Scheduler::instance().clock());
+	#endif
 
-	// whether a relay node or how many prev-hop TX
-	int num_prev_relay = repository_->check_rx_set(nodeId_); // whether relay node
+	// Check whether this is a relay node and how many data flows this node is serving.
+	int num_prev_relay = repository_->check_rx_set(nodeId_);
 
-	// switch channel randomly even pu didn't show up - this benefits samer - Li
-	if (num_prev_relay == 1) { 
-		if (pu_on_rx) { // PU detected and this is a relay node 
-			for(int i=0; i < num_prev_relay; i++)
-				printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
-						nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
-		}
-		else { // look for a better channel after some time - Li
-			double randomValue = Random::uniform();
-			if(randomValue < 0.25) {
-				printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
-						nodeId_, current_channel, CURRENT_TIME);
-				pu_on_rx = true; 
-				/*
-				FILE *fd = fopen("adapt.txt", "a");
-				fprintf(fd, "time %f \t node %d\n", CURRENT_TIME, nodeId_);
-				fclose(fd);
-				*/
-			}
+	// Output link break information because of rx interupted by PU.
+	if (pu_on_rx) { 
+		for (int i=0; i < num_prev_relay; i++)
+			printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
+					nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
+	}
+
+	// Choose a better rx channel after some time.
+	if ((num_prev_relay == 1) && (!pu_on_rx)) { 
+	// is a relay node and serve only one data flow
+		double randomValue = Random::uniform();
+		if (randomValue < 0.25) {
+			printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
+					nodeId_, current_channel, CURRENT_TIME);
+			pu_on_rx = true; 
+			/*
+			FILE *fd = fopen("adapt.txt", "a");
+			fprintf(fd, "time %f \t node %d\n", CURRENT_TIME, nodeId_);
+			fclose(fd);
+			*/
 		}
 	}
 
-	// Find prev-hop nodes and check tx and rx channels
+	// find prev-hop nodes and check both their tx and rx channels
 	if (num_prev_relay != 0) { 
 
-		for(int i=0; i < MAX_FLOWS; i++) { // Initialization
-			prev_hop[i].id=-1;
-			prev_hop[i].flow=-1;
-			prev_hop[i].pu_on=false;
+		for (int i = 0; i < MAX_FLOWS; i++) {
+			prev_hop[i].id = -1;
+			prev_hop[i].flow = -1;
+			prev_hop[i].pu_on = false;
 		}
 
 		// Get prev-hop node id
@@ -223,8 +224,7 @@ SpectrumManager::senseHandler() {
 			}
 		}
 
-		// Error Check
-		if(counter_ != num_prev_relay) {
+		if (counter_ != num_prev_relay) { // error check: rx set times
 			printf("[!!!WARNING!!!] set num is not correct on node %d\n", nodeId_);
 			exit(0);
 		}
