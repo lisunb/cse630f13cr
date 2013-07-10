@@ -162,7 +162,6 @@ void
 SpectrumManager::senseHandler() {
 
 	int current_channel = repository_->get_recv_channel(nodeId_);
-	int next_channel = -1;
 	
 	if (current_channel == 0) { // error check: using control channel for data
 		printf("[!!!WARNING!!!] node: %d is using control channel.\n", nodeId_);
@@ -177,16 +176,16 @@ SpectrumManager::senseHandler() {
 	// Check whether this is a relay node and how many data flows this node is serving.
 	int num_prev_relay = repository_->check_rx_set(nodeId_);
 
-	// Output link break information because of rx interupted by PU.
-	if (pu_on_rx) { 
-		for (int i=0; i < num_prev_relay; i++)
+	// Output link break info if a relay's rx is interupted by PU.
+	if ((num_prev_relay > 0) && pu_on_rx) { 
+		for (int i = 0; i < num_prev_relay; i++)
 			printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
 					nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
 	}
 
 	// Choose a better rx channel after some time.
 	if ((num_prev_relay == 1) && (!pu_on_rx)) { 
-	// is a relay node and serve only one data flow
+	// a relay node and serve only one data flow
 		double randomValue = Random::uniform();
 		if (randomValue < 0.25) {
 			printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
@@ -200,7 +199,8 @@ SpectrumManager::senseHandler() {
 		}
 	}
 
-	// find prev-hop nodes and check both their tx and rx channels
+	// Check prev-hop tx channels and swith rx channel if rx or tx is
+	// interrupted by PU.
 	if (num_prev_relay != 0) { 
 
 		for (int i = 0; i < MAX_FLOWS; i++) {
@@ -209,12 +209,12 @@ SpectrumManager::senseHandler() {
 			prev_hop[i].pu_on = false;
 		}
 
-		// Get prev-hop node id
+		// Get prev-hop node id.
 		int node_list[MAX_FLOWS+1];
 		node_list[0] = nodeId_;
 		
 		int counter_=0;
-		for(int i=0; i < MAX_FLOWS; i++) {
+		for (int i = 0; i < MAX_FLOWS; i++) {
 			int flow_ = repository_->read_flow_id(nodeId_, i);
 			if(flow_ != -1) {
 				prev_hop[counter_].flow = flow_;
@@ -229,14 +229,14 @@ SpectrumManager::senseHandler() {
 			exit(0);
 		}
 
-		// Sense each prev-hop TX 
-		pu_on_tx=0;
+		// Sense each prev-hop tx channels.
+		pu_on_tx = 0;
 		int uflow_list[MAX_FLOWS];
 		int uflow_list_all[MAX_FLOWS];
 		int udst_list[MAX_FLOWS]; 
 		int udst_list_all[MAX_FLOWS]; // all flows' dst 
 
-		for(int i=0; i < num_prev_relay; i++) {
+		for (int i = 0; i < num_prev_relay; i++) {
 			uflow_list_all[i] = prev_hop[i].flow;
 			udst_list_all[i] = repository_->read_flow_dst(prev_hop[i].flow);
 
@@ -248,37 +248,41 @@ SpectrumManager::senseHandler() {
 			}
 		}
 
-		// RX detected PU or TX detected PU
+		// Output link break info if pre-hop tx is interupted by PU.
+		if ((!pu_on_rx) && (pu_on_tx > 0)) { 
+			for (int i = 0; i < pu_on_tx; i++)
+				printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
+						nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
+		}
+
+		// Try to switch rx channel if rx or tx channel is interupted by PU.
 		if( pu_on_rx == true || pu_on_tx != 0 ) { 
 
-			mobilityMod_->performHandoff(); // Starts handoff timer
+			// Start handoff timer.
+			mobilityMod_->performHandoff();
 
-			// Find the best available channel accroding to routing metric - Li
-			#ifdef CHANNEL_DECISION_MAC_LAYER // Actually, not at MAC Layer - Li 
+			// Find the best available channel accroding to metric.
+			int next_channel = -1;
 			next_channel = repository_->change_channel(node_list, (num_prev_relay+1), CURRENT_TIME);
-
-			// Error Check 
-			if(next_channel == 0) {
+			if (next_channel == 0) { // error check: use control channel
 				printf("[!!!WARNING!!!] node: %d is using control channel.\n", nodeId_);
 				exit(0);
 			}
 
-			// can't find any available channel for all
-			if( next_channel == -1 && pu_on_rx == true) {
-
-				// limark
-				printf(" clean_all_route_channel:\n");
-				for(int i=0; i < num_prev_relay; i++) {
+			// Condition 1: route break if can't find a channel
+			// Condition 2: switch channel if can find a channel
+			if (next_channel == -1 && pu_on_rx == true) {
+			// no available channel and rx channel is interupted
+				printf(" clean_all_route_channel:\n"); // limark
+				for (int i=0; i < num_prev_relay; i++) {
 					printf("ure dst %d\n", udst_list_all[i]);
 				}
 
 				repository_->clean_route_channel(uflow_list_all, num_prev_relay);
 				mac_->notifyUpperLayer(udst_list_all, num_prev_relay);
-			}
-			else if( next_channel == -1 && pu_on_rx == false) {
-
-				// limark
-				printf(" clean_route_channel:\n");
+			} else if ( next_channel == -1 && pu_on_rx == false) {
+			// no available channel and only tx channel is interupted
+				printf(" clean_route_channel:\n"); // limark
 				printf(" all dst:");
 				for(int i=0; i < num_prev_relay; i++) {
 					 printf(" %d", udst_list_all[i]);
@@ -290,43 +294,37 @@ SpectrumManager::senseHandler() {
 
 				repository_->clean_route_channel(uflow_list, pu_on_tx);
 				mac_->notifyUpperLayer(udst_list, pu_on_tx);
-			}
-			// We find some channels that can be used - Li
-			else { 
-				
+			} else { 
+			// channel available
 				printf(" [SU Changes Channel!] Node: %d Current_Channel: %d Next_Channel: %d Time: %f\n\n", 
 						nodeId_, current_channel, next_channel, CURRENT_TIME);
 
 				repository_->set_recv_channel(nodeId_, next_channel);
-				mac_->load_spectrum(next_channel); // New one - Li
+				mac_->load_spectrum(next_channel); // new one - Li
 			}
-
-			#endif // CHANNEL_DECISION_MAC_LAYER
 
 			#ifdef SENSING_VERBOSE_MODE
 			printf("[SENSING-DBG] Node %d starts handoff on channel %d to channel %d at time %f \n",
 					nodeId_,current_channel,next_channel,Scheduler::instance().clock()); 
 			#endif
 			
-		} // end of if( pu_on_rx == true || pu_on_tx != 0 ) 
-		else {
-			pu_on_rx = false;
-			ttimer_.start(transmit_time_);
-			mac_->checkBackoffTimer(); // Start the backoff timer
-		}
-	} // end of if(num_prev_relay != 0) 
-	else {
-		pu_on_rx = false;
-		ttimer_.start(transmit_time_);
-		mac_->checkBackoffTimer(); // Start the backoff timer
+			// Transmit timer will be set after handoff.
+			return;
 
-		#ifdef SENSING_VERBOSE_MODE
-		printf("[SENSING-DBG] Node %d starts transmitting on channel %d at time %f \n",
-				nodeId_,current_channel,Scheduler::instance().clock()); 
-		#endif
-	}
-	
+		} // end of if( pu_on_rx == true || pu_on_tx != 0 ) 
+	} // end of if(num_prev_relay != 0) 
+
+	// Start transmit timer normally if this is not a relay or if this
+	// is a relay but both rx and tx are not interupted by PU.
+	pu_on_rx = false;
+	ttimer_.start(transmit_time_);
+	mac_->checkBackoffTimer();
 	sensing_=false;
+
+	#ifdef SENSING_VERBOSE_MODE
+	printf("[SENSING-DBG] Node %d starts transmitting on channel %d at time %f \n",
+			nodeId_,current_channel,Scheduler::instance().clock()); 
+	#endif
 }
 
 //transmitHandler: the CR stops transmitting, and starts sensing for PU detection

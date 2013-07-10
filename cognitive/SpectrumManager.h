@@ -26,15 +26,8 @@
 #include "mac/mac-802_11.h"
 #include "common/packet.h"
 
-
-// Spectrum Manager modules
-// Enable/Disable channel allocation performed at MAC Layer, by the SpectrumDecision Module
-// Comment this line if channel allocation is performed by the routing agent 
-#define CHANNEL_DECISION_MAC_LAYER
-
 // Enable/Disable Notifications MAC->NET layers, in case of PU detection on the current channel
 #define ENABLE_SPECTRUM_HANDOFF_NOTIFICATION
-
 
 // Spectrum Manager constant values
 #define DEFAULT_SENSING_INTERVAL 	0.1    //Default Sensing duration
