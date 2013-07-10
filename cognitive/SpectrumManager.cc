@@ -161,14 +161,10 @@ SpectrumManager::setSpectrumData(SpectrumData *sd) {
 void 
 SpectrumManager::senseHandler() {
 
+	// Get current rx channel.
 	int current_channel = repository_->get_recv_channel(nodeId_);
 	
-	if (current_channel == 0) { // error check: using control channel for data
-		printf("[!!!WARNING!!!] node: %d is using control channel.\n", nodeId_);
-		exit(0);
-	}
-	
-	#ifdef SENSING_VERBOSE_MODE // abdulla
+	#ifdef SENSING_VERBOSE_MODE
 	printf("[SENSING-DBG] Node %d is on channel %d and PU activity is %s at time: %f\n", 
 			nodeId_, current_channel, (pu_on_rx)?"true":"false", Scheduler::instance().clock());
 	#endif
@@ -185,7 +181,7 @@ SpectrumManager::senseHandler() {
 
 	// Choose a better rx channel after some time.
 	if ((num_prev_relay == 1) && (!pu_on_rx)) { 
-	// a relay node and serve only one data flow
+	// a relay node serving only one data flow
 		double randomValue = Random::uniform();
 		if (randomValue < 0.25) {
 			printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
@@ -199,7 +195,7 @@ SpectrumManager::senseHandler() {
 		}
 	}
 
-	// Check prev-hop tx channels and swith rx channel if rx or tx is
+	// Check prev-hop tx channels and swith rx channel if rx or pre-hop tx is
 	// interrupted by PU.
 	if (num_prev_relay != 0) { 
 
@@ -211,9 +207,8 @@ SpectrumManager::senseHandler() {
 
 		// Get prev-hop node id.
 		int node_list[MAX_FLOWS+1];
-		node_list[0] = nodeId_;
-		
 		int counter_=0;
+		node_list[0] = nodeId_;
 		for (int i = 0; i < MAX_FLOWS; i++) {
 			int flow_ = repository_->read_flow_id(nodeId_, i);
 			if(flow_ != -1) {
@@ -223,7 +218,6 @@ SpectrumManager::senseHandler() {
 				counter_++;
 			}
 		}
-
 		if (counter_ != num_prev_relay) { // error check: rx set times
 			printf("[!!!WARNING!!!] set num is not correct on node %d\n", nodeId_);
 			exit(0);
@@ -272,16 +266,16 @@ SpectrumManager::senseHandler() {
 			// Condition 1: route break if can't find a channel
 			// Condition 2: switch channel if can find a channel
 			if (next_channel == -1 && pu_on_rx == true) {
-			// no available channel and rx channel is interupted
+			// no available channel and rx channel is interupted (Condition 1)
 				printf(" clean_all_route_channel:\n"); // limark
 				for (int i=0; i < num_prev_relay; i++) {
 					printf("ure dst %d\n", udst_list_all[i]);
 				}
-
+				// clean all routes
 				repository_->clean_route_channel(uflow_list_all, num_prev_relay);
 				mac_->notifyUpperLayer(udst_list_all, num_prev_relay);
 			} else if ( next_channel == -1 && pu_on_rx == false) {
-			// no available channel and only tx channel is interupted
+			// no available channel and only tx channel is interupted (Condition 1)
 				printf(" clean_route_channel:\n"); // limark
 				printf(" all dst:");
 				for(int i=0; i < num_prev_relay; i++) {
@@ -291,11 +285,11 @@ SpectrumManager::senseHandler() {
 				for(int i=0; i < pu_on_tx; i++) {
 					printf("ure dst %d\n", udst_list[i]);
 				} 
-
+				// clean impacted routes only
 				repository_->clean_route_channel(uflow_list, pu_on_tx);
 				mac_->notifyUpperLayer(udst_list, pu_on_tx);
 			} else { 
-			// channel available
+			// channel available (Condition 2)
 				printf(" [SU Changes Channel!] Node: %d Current_Channel: %d Next_Channel: %d Time: %f\n\n", 
 						nodeId_, current_channel, next_channel, CURRENT_TIME);
 

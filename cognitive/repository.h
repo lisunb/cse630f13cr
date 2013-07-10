@@ -206,7 +206,7 @@ class Repository : public NsObject {
 		int get_relay_by_hop(int id, int count);
 		int check_path_state(int id);
 		void clean_route_channel(int *flow_list, int flow_num);
-		void clean_all_route_channel(int node);
+		void clean_all_route_channel(int node); // not used anymore
 
 		// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #endif // LI_MOD

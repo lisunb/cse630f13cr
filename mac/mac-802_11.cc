@@ -2083,8 +2083,7 @@ Mac802_11::notifyUpperLayer(int *udst_list, int udst_num) {
 	ch->channel_= channel;
 #else // LI_MOD
 
-	// Error Check
-	if(udst_num > 5) { // 5 is the value defined in packet.h
+	if(udst_num > 5) { // error check: 5 is array size or maximum flows, defined in packet.h
 		printf("[!!!WARNING!!!] unum exceeds the upper limit in common control header, node: %d.\n", index_/MAX_RADIO);
 		exit(0);
 	}

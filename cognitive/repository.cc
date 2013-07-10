@@ -125,19 +125,31 @@ Repository::Repository() {
 //get_recv_channel: Return the receiving channel for a node
 int 
 Repository::get_recv_channel(int node) {
-	if (node < MAX_NODES)
-		return repository_table_rx[node].recv_channel;
-	else
-		return -1;
+
+	int rx_chan = repository_table_rx[node].recv_channel;
+
+	if (node > (MAX_NODES - 1)) {
+		printf("\n[!!!WARNING!!!] Cannot get recv channel for node: %d. Node id exceeds MAX_NODES.\n", node);
+		exit(0);
+	} else if ((rx_chan < 1) || (rx_chan > 10)) {
+		printf("\n[!!!WARNING!!!] Get wrong recv channel %d for node: %d.\n", rx_chan, node);
+		exit(0);
+	}
+
+	return rx_chan;
 }
 	 
 
 //set_recv_channel: Set the receiving channel for a node
 void 
 Repository::set_recv_channel(int node, int channel) {
-	if (node < MAX_NODES)
-		repository_table_rx[node].recv_channel=channel;
 
+	if ((node < MAX_NODES) && (channel > 0) && (channel < 11)) {
+		repository_table_rx[node].recv_channel = channel;
+	} else {
+		printf("\n[!!!WARNING!!!] Cannot set recv channel %d for node: %d.\n", channel, node);
+		exit(0);
+	}
 }
 
 		
@@ -1073,7 +1085,7 @@ Repository::clean_route_channel(int *flow_list, int flow_num) {
 	}
 }
 
-// Clean current route before repairing 
+// not used anymore
 void
 Repository::clean_all_route_channel(int node) {
 	
