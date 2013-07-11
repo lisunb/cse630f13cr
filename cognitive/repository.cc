@@ -925,7 +925,7 @@ Repository::is_common_channel(int channel, int *node, int num) {
 	bool available=true;
 	int node_;
 
-	for(int i=0; i < num; i++) {
+	for (int i=0; i < num; i++) {
 		node_ = node[i];
 		if(repository_table_rx[node_].sense_results[channel] == false) {
 			available=false;
@@ -945,68 +945,56 @@ Repository::change_channel(int *list, int node_num, double time) {
 #endif // if CRP
 
 	double current_time = time;
-	int node_list[MAX_FLOWS+1]; // 0 is for RX
 
-	// limark
-	printf("Number of nodes: %d\n", node_num);
+	// Get rx(host) and tx node id.
+	int node_list[MAX_FLOWS+1]; // 0 is for host
+	printf("Number of nodes: %d\n", node_num); // limark
 	printf("Node lists: ");
-	if(node_num > MAX_FLOWS + 1) {
+	if (node_num > MAX_FLOWS + 1) { // error check: tx number and maximum flow number
 		printf("[!!!WARNING!!!] node_num exceeds MAX_FLOW + 1 in change_channel.\n");
 		exit(0);
 	}
-
-	for(int i=0; i < node_num; i++) {
+	for (int i = 0; i < node_num; i++) {
 		node_list[i] = list[i];
-		// limark
 		printf("%d ", node_list[i]);
 	}
-	
-	// limark
 	printf("\n");
 
-	int host_=node_list[0];
-
-	// Error Check
-	if( repository_table_rx[host_].set != node_num - 1 ) {
+	// Get rx(host) node id.
+	int host_ = node_list[0];
+	if (repository_table_rx[host_].set != node_num - 1) { // error check: tx number and set times.
 		printf("\n[!!!WARNING!!!] node %d set: %d node_num: %d not correct while changing channel.\n",
 				node_list[0], repository_table_rx[host_].set, node_num);
 		exit(0);
 	}
 
-	// Check available channels we can use 
+	// Check available channels can be used. 
 	int channel_num = 0;
 	int channel_list[MAX_CHANNELS];
-
-	// limark
-	printf("Available channels:");
-
-	for(int chan_=1; chan_ < MAX_CHANNELS; chan_++) {
-		if( is_common_channel(chan_, node_list, node_num) ) {
+	printf("Available channels:"); // limark
+	for (int chan_=1; chan_ < MAX_CHANNELS; chan_++) {
+		if (is_common_channel(chan_, node_list, node_num)) {
 #ifdef CRP
-			if(check_channel_average(host_, chan_) == true && check_channel_variance(host_, chan_) == true)
-#endif // if CRP
+			if (check_channel_average(host_, chan_) == true && check_channel_variance(host_, chan_) == true)
+#endif
 			{
 				channel_list[channel_num]=chan_;
-				// limark
 				printf(" %d", chan_);
 				channel_num++;
 			}
 		}
 	}
-
-	// limark
 	printf("\n");
-
 	if(channel_num == 0)
-		return -1;
+		return -1; // no available channel
 
+	// Find the best channel from all available ones.
 	int channel_;
 	double weight_ = MAXD;
-
-	for(int i=0; i < channel_num; i++) {
+	for (int i = 0; i < channel_num; i++) {
 		int chan_ = channel_list[i];
 		double t_ = 0.0;
-		for(int j=1; j < node_num; j++) {
+		for (int j = 1; j < node_num; j++) {
 			int prev_node_ = node_list[j];	
 			t_+=cal_link_wt(host_, prev_node_, chan_, current_time);	
 		}
