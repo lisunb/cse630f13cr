@@ -234,7 +234,7 @@ Repository::is_sd_pointer_set() {
  ********************************/
 
 void
-Repository::update_nb(int node, int nb) {
+Repository::update_nb(int node, int nb_id) {
 
 	int i, is_nb = 0;
 
@@ -242,36 +242,36 @@ Repository::update_nb(int node, int nb) {
 	for(i = 0; i < MAX_NB; i++) {
 		if(repository_node_nb[node][i] == -1)
 			break; // i is the position for this nb;
-		if(repository_node_nb[node][i] == nb) {
+		if(repository_node_nb[node][i] == nb_id) {
 			is_nb = 1;
 			break;
 		}
 	}
 
 	if((is_nb == 0)&&(i != MAX_NB)) 
-		repository_node_nb[node][i] = nb;
+		repository_node_nb[node][i] = nb_id;
 }
 
 void
-Repository::update_nb(int node, int neighbor, int chan) {
+Repository::update_nb(int node, int nb_id, int chan) {
 
-	int nb, is_set = 0; // nb is index
+	int i, is_set = 0; // i is nb index, not nb id
 
 	// check if this nb exists
-	for(nb = 0; nb < MAX_NB; nb++) {
-		if (repository_table_nb[node][nb].node == neighbor) {
-			if (repository_table_nb[node][nb].channel[chan])
+	for(i = 0; i < MAX_NB; i++) {
+		if (repository_table_nb[node][i].node == nb_id) {
+			if (repository_table_nb[node][i].channel[chan])
 				is_set = 1;
 			break;
 		}
-		if(repository_table_nb[node][nb].node == -1)
+		if(repository_table_nb[node][i].node == -1)
 			break;
 	}
 
 	// remember this neighbor and channel
-	if((is_set == 0) && (nb != MAX_NB)) { 
-		repository_table_nb[node][nb].node = neighbor;
-		repository_table_nb[node][nb].channel[chan] = true;
+	if((is_set == 0) && (i != MAX_NB)) { 
+		repository_table_nb[node][i].node = nb_id;
+		repository_table_nb[node][i].channel[chan] = true;
 	}
 }
 
@@ -279,17 +279,17 @@ void
 Repository::print_nb(int node) {
 
 	printf("Neighbor table of node %d: ", node);
-	for(int nb = 0; nb < MAX_NB; nb++) {
-		if(repository_table_nb[node][nb].node != -1)
-			printf("%d ", repository_table_nb[node][nb].node);
+	for(int i = 0; i < MAX_NB; i++) {
+		if(repository_table_nb[node][i].node != -1)
+			printf("%d ", repository_table_nb[node][i].node);
 	}
 	printf("\n");
 
 	for(int ch = 0; ch < MAX_CHANNELS; ch++) {
 		printf("On channel %d: ", ch);
-		for(int nb = 0; nb < MAX_NB; nb++) {
-			if((repository_table_nb[node][nb].node != -1) && repository_table_nb[node][nb].channel[ch])
-				printf("%d ", repository_table_nb[node][nb].node);
+		for(int i = 0; i < MAX_NB; i++) {
+			if((repository_table_nb[node][i].node != -1) && repository_table_nb[node][i].channel[ch])
+				printf("%d ", repository_table_nb[node][i].node);
 		}
 		printf("\n");
 	}
@@ -492,17 +492,17 @@ Repository::get_channel_utility(int node, int channel) {
 
 // calulate the link metric value accroding to a metric
 double
-Repository::cal_link_wt(int host, int nb, int channel, double time) {
+Repository::cal_link_wt(int host, int nb_id, int channel, double time) {
 
 	double current_time = time;
 	double metric_value_ = 0.0;
 
 #ifdef CP_AT
-	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
+	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb_id][channel]);
 #endif // end if CP_AT
 	
 #ifdef CP_HT
-	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb][channel]);
+	metric_value_ = 1 - (1 - repository_channel_utility[host][channel])*(1 - repository_channel_utility[nb_id][channel]);
 #endif // end if CP_HT
 
 #ifdef SAMER
@@ -518,7 +518,7 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 		if (repository_table_nb[host][i].node == -1)
 			break;
 		if (repository_table_nb[host][i].channel[channel]) {
-			nb_list[i] = repository_table_nb[host][i].node;
+			nb_list[nb_counter] = repository_table_nb[host][i].node;
 			nb_counter++;
 		}
 	}
@@ -557,9 +557,9 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 	}
 
 	double av_host = 1.0 - repository_channel_utility[host][channel];
-	double av_nb = 1.0 - repository_channel_utility[nb][channel];
+	double av_nb = 1.0 - repository_channel_utility[nb_id][channel];
 	double av_min = av_host>av_nb ? av_nb:av_host;
-	metric_value_ = 1.0 - av_min*(1.0 - sd_->spectrum_table_[channel].per[host][nb])/(double)channel_count;
+	metric_value_ = 1.0 - av_min*(1.0 - sd_->spectrum_table_[channel].per[host][nb_id])/(double)channel_count;
 #endif // end if SAMER
  
 #ifdef CRP
@@ -572,10 +572,10 @@ Repository::cal_link_wt(int host, int nb, int channel, double time) {
 // calculate link weights between a neighboring pair
 // and find out the best channel
 void
-Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
+Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 
 	// variable initialization
-	int nb = g->edges[node][neighbor].v; // real neighbor id
+	int nb_id = g->edges[node][nb_idx].v; // real neighbor id
 	int channel_ = -1; // current best channel
 #ifdef SAMER
 	double weight_ = 0.0; // cumulative weight
@@ -591,12 +591,12 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 #endif
 
 	// check all channels one by one
-	if (repository_table_rx[nb].set == 0) {
+	if (repository_table_rx[nb_id].set == 0) {
 	// rx channel is not set
 		for (int ch = 1; ch < MAX_CHANNELS; ch++) {
-			if (repository_table_nb[node][neighbor].channel[ch]) {
+			if (repository_table_nb[node][nb_idx].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
-				double t_ = cal_link_wt(node, nb, ch, time);
+				double t_ = cal_link_wt(node, nb_id, ch, time);
 #ifdef CRP // CRP
 				if (!channel_st[ch]) {
 					t_ = max_link_wt;
@@ -619,20 +619,20 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 		}
 	} else {
 	// rx channel is already set
-		channel_ = repository_table_rx[nb].recv_channel;
+		channel_ = repository_table_rx[nb_id].recv_channel;
 #ifndef SAMER
-		weight_ = cal_link_wt(node, nb, channel_, time);
+		weight_ = cal_link_wt(node, nb_id, channel_, time);
 	#ifdef CRP
 		if (!channel_st[channel_]) {
 			weight_ = max_link_wt;
 		}
 	#endif
 #else // SAMER
-		int route_count = repository_table_rx[nb].set + 1;
+		int route_count = repository_table_rx[nb_id].set + 1;
 		for (int ch = 1; ch < MAX_CHANNELS; ch++) {
-			if (repository_table_nb[node][neighbor].channel[ch]) {
+			if (repository_table_nb[node][nb_idx].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
-				double t_ = cal_link_wt(node, nb, ch, time);
+				double t_ = cal_link_wt(node, nb_id, ch, time);
 				weight_ = weight_ + 1 - (1 - t_)/(double)route_count; // shared by route
 			}
 		}
@@ -640,8 +640,8 @@ Repository::check_neighbor(graph *g, int node, int neighbor, double time) {
 	}
 
 	// store the best weight and channel of for this neighbor	
-	g->edges[node][neighbor].weight = weight_;
-	g->edges[node][neighbor].channel = channel_;
+	g->edges[node][nb_idx].weight = weight_;
+	g->edges[node][nb_idx].channel = channel_;
 }
 
 // construct graph for dijkstra
@@ -723,38 +723,38 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 		intree[cur_node] = true;
 		// check all of this current node's links
 		for (int i = 0; i < g->degree[cur_node]; i++) {
-			int nb_node = g->edges[cur_node][i].v; // neighbor node (candidate next vertex)
+			int nb_id = g->edges[cur_node][i].v; // neighbor node (candidate next vertex)
 			double weight = g->edges[cur_node][i].weight; // edge weight (edge length)
 			
 			#ifdef CP_AT
-			if (distance[nb_node] > (distance[cur_node]+weight)) {
-				distance[nb_node] = distance[cur_node]+weight;
-				parent[nb_node] = cur_node;
+			if (distance[nb_id] > (distance[cur_node]+weight)) {
+				distance[nb_id] = distance[cur_node]+weight;
+				parent[nb_id] = cur_node;
 			}
 			#endif 
 
 			#ifdef CP_HT
 			double max_t = (distance[cur_node]>weight?distance[cur_node]:weight);
 
-			if (distance[nb_node] > max_t) {
-				distance[nb_node] = max_t;
-				parent[nb_node] = cur_node;
+			if (distance[nb_id] > max_t) {
+				distance[nb_id] = max_t;
+				parent[nb_id] = cur_node;
 			}
 			#endif
 
 			#ifdef SAMER 
 			double max_t = (distance[cur_node]>weight?distance[cur_node]:weight);
 
-			if (distance[nb_node] > max_t) {
-				distance[nb_node] = max_t;
-				parent[nb_node] = cur_node;
+			if (distance[nb_id] > max_t) {
+				distance[nb_id] = max_t;
+				parent[nb_id] = cur_node;
 			}
 			#endif
 
 			#ifdef CRP
-			if (distance[nb_node] > (distance[cur_node]+weight)) {
-				distance[nb_node] = distance[cur_node]+weight;
-				parent[nb_node] = cur_node;
+			if (distance[nb_id] > (distance[cur_node]+weight)) {
+				distance[nb_id] = distance[cur_node]+weight;
+				parent[nb_id] = cur_node;
 			}
 			#endif 
 		}
@@ -920,15 +920,14 @@ Repository::set_route_channel(int src, int dst, double time) {
 
 // Check whether an available channel for all nodes
 bool
-Repository::is_common_channel(int channel, int *node, int num) {
+Repository::is_common_channel(int channel, int *node, int node_num) {
 
-	bool available=true;
-	int node_;
+	bool available = true;
 
-	for (int i=0; i < num; i++) {
-		node_ = node[i];
-		if(repository_table_rx[node_].sense_results[channel] == false) {
-			available=false;
+	for (int i = 0; i < node_num; i++) {
+		int node_ = node[i];
+		if (repository_table_rx[node_].sense_results[channel] == false) {
+			available = false;
 			break;
 		}
 	}
@@ -1154,8 +1153,7 @@ Repository::get_path_id(int dst, int src) {
 int
 Repository::get_relay_by_hop(int id, int count) {
 
-	int node_;
-	node_ = repository_table_path[id].relay[count];
+	int node_ = repository_table_path[id].relay[count];
 	return node_;
 }
 
