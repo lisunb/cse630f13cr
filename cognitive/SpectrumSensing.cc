@@ -92,7 +92,7 @@ SpectrumSensing::sense_prev_tx(int id, double sense_time, double transmit_time, 
 	return cr_on;	
 }
 
-// sense_all_channels: sense each channel and update repository
+// sense_all_channels: sense all channels for time interval [current_time:current_time + sense_time]
 void
 SpectrumSensing::sense_all_channels(int id, double sense_time, Repository *repo) {
 

@@ -920,15 +920,36 @@ Repository::set_route_channel(int src, int dst, double time) {
 
 // Check whether an available channel for all nodes
 bool
-Repository::is_common_channel(int channel, int *node, int node_num) {
+Repository::is_common_channel(int chan, int *node, int node_num) {
 
 	bool available = true;
+	int host_ = node[0]; // host id
 
 	for (int i = 0; i < node_num; i++) {
-		int node_ = node[i];
-		if (repository_table_rx[node_].sense_results[channel] == false) {
-			available = false;
-			break;
+		int node_ = node[i]; // pre-hop node id or nb id
+		if (node_ != host_) {
+		// this is a pre-hop node
+			int nb_idx_;
+			for (nb_idx_ = 0; nb_idx_ < MAX_NODES; nb_idx_++) { // search nb index
+				if (repository_table_nb[host_][nb_idx_].node == node_)
+					break;
+			}
+			if (nb_idx_ == MAX_NODES) { // error check: nb correctness
+				printf("[!!!WARNING!!!] Cannot find nb in is_common_channel.\n");
+				exit(0);
+			}
+			// channel should satisfy both availability and neighborhood relationship
+			if ((repository_table_rx[node_].sense_results[chan] == false) ||
+			   (repository_table_nb[host_][nb_idx_].channel[chan] == false)) {
+				available = false;
+				break;
+			}
+		} else {
+		// this is the host
+			if (repository_table_rx[node_].sense_results[chan] == false) {
+				available = false;
+				break;
+			}
 		}
 	}
 
