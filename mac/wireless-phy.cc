@@ -337,7 +337,7 @@ WirelessPhy::sendDown(Packet *p)
 			tx_channel = rp->tx_channel;
 		}
 	} else { // DATA pkt
-		//tx_channel = ch->channel_;
+		tx_channel = ch->channel_;
 	}
 
 	p->txinfo_.stamp((MobileNode*)node(), ant_->copy(), pt_for_channel[tx_channel], lambda_);

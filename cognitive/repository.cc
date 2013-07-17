@@ -1005,7 +1005,7 @@ Repository::change_channel(int *list, int node_num, double time) {
 		}
 	}
 	printf("\n");
-	if(channel_num == 0)
+	if (channel_num == 0)
 		return -1; // no available channel
 
 	// Find the best channel from all available ones.
@@ -1016,10 +1016,10 @@ Repository::change_channel(int *list, int node_num, double time) {
 		double t_ = 0.0;
 		for (int j = 1; j < node_num; j++) {
 			int prev_node_ = node_list[j];	
-			t_+=cal_link_wt(host_, prev_node_, chan_, current_time);	
+			t_ += cal_link_wt(host_, prev_node_, chan_, current_time);	
 		}
 
-		if(t_ < weight_) {
+		if (t_ < weight_) {
 			weight_ = t_;
 			channel_ = chan_;
 		}

@@ -103,7 +103,8 @@ class AODV;
 #define LOCAL_REPAIR_WAIT_TIME  0.15 //sec
 
 // Should be set by the user using best guess (conservative) 
-#define NETWORK_DIAMETER        30             // 30 hops
+//#define NETWORK_DIAMETER        30             // 30 hops
+#define NETWORK_DIAMETER        52 // the same as MAX_HOP in repository.h
 
 // Must be larger than the time difference between a node propagates a route 
 // request and gets the route reply back.

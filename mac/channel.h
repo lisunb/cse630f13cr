@@ -65,7 +65,7 @@ public:
 	TclObject* gridkeeper_;
 	double maxdelay() { return delay_; };
   	int index() {return index_;}
-	MobileNode* myList[100];        
+	MobileNode* myList[200];        
 
 private:
 	virtual void sendUp(Packet* p, Phy *txif); 

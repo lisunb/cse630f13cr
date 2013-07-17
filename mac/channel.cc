@@ -290,7 +290,7 @@ WirelessChannel::WirelessChannel(void) : Channel(), numNodes_(0),
 					 xListHead_(NULL), sorted_(0) {
 
 	 //Modified by felicepizzi for LB-NET
-	 for(int i = 0; i < 100; i++) {
+	 for(int i = 0; i < 200; i++) {
    		 myList[i] = NULL;
   	}
 
