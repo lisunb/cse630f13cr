@@ -96,10 +96,10 @@ Repository::Repository() {
 
 	// initialize channel weights
 	double max_dist = 250.0;
-	channel_wt[0] = max_dist / max_dist;
+	channel_wt[0] = 0.0;
 	for (int i = 1; i < MAX_CHANNELS; i++) {
 		int t = (i + 1) / 2;
-		channel_wt[i] = (max_dist - (double)(t-1) * 40.0) / max_dist;
+		channel_wt[i] = (max_dist - (double)(t-1) * 40.0 - 1) / max_dist;
 	}
 
 	#endif // end CRP
@@ -578,6 +578,7 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 	int nb_id = g->edges[node][nb_idx].v; // real neighbor id
 	int channel_ = -1; // current best channel
 #ifdef SAMER
+	int ch_cnt = 0; // available channel counter
 	double weight_ = 0.0; // cumulative weight
 	double min_w = MAXD; // current minimum weight
 #else
@@ -603,13 +604,14 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 				}
 #endif
 
-#ifndef SAMER
+#ifndef SAMER // not SAMER
 				if (t_ < weight_) {
 					weight_ = t_;
 					channel_ = ch;
 				}
 #else // SAMER
 				weight_ += t_;
+				ch_cnt++;
 				if (t_ < min_w) {
 					min_w = t_;
 					channel_ = ch;
@@ -620,7 +622,7 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 	} else {
 	// rx channel is already set
 		channel_ = repository_table_rx[nb_id].recv_channel;
-#ifndef SAMER
+#ifndef SAMER // not SAMER
 		weight_ = cal_link_wt(node, nb_id, channel_, time);
 	#ifdef CRP
 		if (!channel_st[channel_]) {
@@ -634,12 +636,23 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb_id, ch, time);
 				weight_ = weight_ + 1 - (1 - t_)/(double)route_count; // shared by route
+				ch_cnt++;
 			}
 		}
 #endif
 	}
 
-	// store the best weight and channel of for this neighbor	
+#ifdef SAMER 
+	// unify samer
+	if (ch_cnt < 2) { // error check: should have at least 2 channels available
+		printf("\n[!!!WARNING!!!] NB pairs of %d and %d have less than two available channels.\n",
+				node, nb_id);
+		exit(0);
+	}
+	weight_ = 1.0 - ((double)ch_cnt - weight_)/10.0; 
+#endif
+
+	// store the best weight and channel for this neighbor
 	g->edges[node][nb_idx].weight = weight_;
 	g->edges[node][nb_idx].channel = channel_;
 }
@@ -856,7 +869,7 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 	}
 
 	return i; // return entry point
-}	
+}
 
 // route and channel joint allocation
 int
@@ -968,8 +981,8 @@ Repository::change_channel(int *list, int node_num, double time) {
 
 	// Get rx(host) and tx node id.
 	int node_list[MAX_FLOWS+1]; // 0 is for host
-	printf("Number of nodes: %d\n", node_num); // limark
-	printf("Node lists: ");
+	printf(" Number of nodes: %d\n", node_num); // limark
+	printf(" Node lists: ");
 	if (node_num > MAX_FLOWS + 1) { // error check: tx number and maximum flow number
 		printf("[!!!WARNING!!!] node_num exceeds MAX_FLOW + 1 in change_channel.\n");
 		exit(0);
@@ -991,7 +1004,7 @@ Repository::change_channel(int *list, int node_num, double time) {
 	// Check available channels can be used. 
 	int channel_num = 0;
 	int channel_list[MAX_CHANNELS];
-	printf("Available channels:"); // limark
+	printf(" Available channels:"); // limark
 	for (int chan_=1; chan_ < MAX_CHANNELS; chan_++) {
 		if (is_common_channel(chan_, node_list, node_num)) {
 #ifdef CRP
@@ -1004,7 +1017,7 @@ Repository::change_channel(int *list, int node_num, double time) {
 			}
 		}
 	}
-	printf("\n");
+	printf("\n\n");
 	if (channel_num == 0)
 		return -1; // no available channel
 
@@ -1063,7 +1076,7 @@ Repository::clean_route_channel(int *flow_list, int flow_num) {
 	for(int i=0; i < flow_num; i++) {
 		// read each flow id
 		int flow_id_ = flow_list[i];
-		printf(" [Broken Route] Src: %d Dst: %d\n",
+		printf("[Broken Route] Src: %d Dst: %d\n",
 				repository_table_path[flow_id_].src, repository_table_path[flow_id_].dst);
 
 		// deal with node as relay - decrease set num and clean flow id

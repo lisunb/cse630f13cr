@@ -184,7 +184,7 @@ SpectrumManager::senseHandler() {
 	// a relay node serving only one data flow
 		double randomValue = Random::uniform();
 		if (randomValue < 0.25) {
-			printf("\n [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
+			printf(" [SU Adapts Channel!] Node: %d Current_Channel: %d Time: %f\n", 
 					nodeId_, current_channel, CURRENT_TIME);
 			pu_on_rx = true; 
 			/*
@@ -269,7 +269,7 @@ SpectrumManager::senseHandler() {
 			// no available channel and rx channel is interupted (Condition 1)
 				printf(" clean_all_route_channel:\n"); // limark
 				for (int i=0; i < num_prev_relay; i++) {
-					printf("ure dst %d\n", udst_list_all[i]);
+					printf(" ure dst %d\n", udst_list_all[i]);
 				}
 				// clean all routes
 				repository_->clean_route_channel(uflow_list_all, num_prev_relay);
@@ -283,14 +283,14 @@ SpectrumManager::senseHandler() {
 				}
 				printf("\n"); 
 				for(int i=0; i < pu_on_tx; i++) {
-					printf("ure dst %d\n", udst_list[i]);
+					printf(" ure dst %d\n", udst_list[i]);
 				} 
 				// clean impacted routes only
 				repository_->clean_route_channel(uflow_list, pu_on_tx);
 				mac_->notifyUpperLayer(udst_list, pu_on_tx);
 			} else { 
 			// channel available (Condition 2)
-				printf(" [SU Changes Channel!] Node: %d Current_Channel: %d Next_Channel: %d Time: %f\n\n", 
+				printf(" [SU Changes Channel!] Node: %d Current_Channel: %d Next_Channel: %d Time: %f\n", 
 						nodeId_, current_channel, next_channel, CURRENT_TIME);
 
 				repository_->set_recv_channel(nodeId_, next_channel);

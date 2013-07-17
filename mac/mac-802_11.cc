@@ -2015,9 +2015,9 @@ Mac802_11::switchqueueHandler()
 		// IMPLEMENT here your own policy scheme mamagement
 	 }
 	
-//	#ifdef MAC_VERBOSE
+	#ifdef MAC_VERBOSE
 	printf(" [SWITCHING INTERFACE] Node: %d Current channel: %d Time:%f \n",index_/MAX_RADIO,new_switchable_channel_, Scheduler::instance().clock());
-//	#endif
+	#endif
 
 	// LI_MOD: Modify here to avoid memory leak.
 	// Notify the IFQ layer that a queue switching has been performed

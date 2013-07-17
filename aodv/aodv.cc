@@ -883,7 +883,7 @@ AODV::recvRequest(Packet *p) {
 		if (seqno%2) seqno++;
 		
 		#ifdef LI_MOD
-		printf("[RREQ RECV] Node %d received RREQ at time %f and is going to call set_route_channel() \n", index, CURRENT_TIME);
+		printf(" [RREQ RECV] Node %d received RREQ at time %f and is going to call set_route_channel() \n", index, CURRENT_TIME);
 		if (repository_->set_route_channel(rq->rq_src, index, CURRENT_TIME) != 0) {
 			printf("\n!!! Destination %d cannot find the path to Source %d !!!\n\n", index, rq->rq_src);
 			return;

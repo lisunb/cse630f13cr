@@ -135,7 +135,7 @@ WirelessPhy::WirelessPhy() : Phy(), sleep_timer_(this), status_(IDLE)
 	// channel 0 (control channel) - 250m
 	// channel 1, 2 - 250m
 	// channel 3, 4 - 210m
-	// channel 5, 6 - 170m
+	// channel 5, 6 ~ 170m (175m) 
 	// channel 7, 8 - 130m
 	// channel 9, 10 - 90m
 	pt_for_channel[0] = 0.28183815;
@@ -143,8 +143,8 @@ WirelessPhy::WirelessPhy() : Phy(), sleep_timer_(this), status_(IDLE)
 	pt_for_channel[2] = 0.28183815;
 	pt_for_channel[3] = 1.402952e-01;
 	pt_for_channel[4] = 1.402952e-01;
-	pt_for_channel[5] = 6.025061e-02;
-	pt_for_channel[6] = 6.025061e-02;
+	pt_for_channel[5] = 6.765781e-02;
+	pt_for_channel[6] = 6.765781e-02;
 	pt_for_channel[7] = 2.060341e-02;
 	pt_for_channel[8] = 2.060341e-02;
 	pt_for_channel[9] = 4.732992e-03;
