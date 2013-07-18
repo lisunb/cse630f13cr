@@ -662,7 +662,7 @@ AODV::rt_purge() {
 
 			// Be careful about who comes here - Li
 			sendRequest(rt->rt_dst); // rt_purge() calls it - Li
-			printf("\n [Route Purge] rt_purge() calls sendRequest() on Node %d \n\n", index);
+			printf(" [Route Purge] rt_purge() calls sendRequest() on Node %d \n\n", index);
 		}
 	}
 }

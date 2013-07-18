@@ -175,7 +175,7 @@ SpectrumManager::senseHandler() {
 	// Output link break info if a relay's rx is interupted by PU.
 	if ((num_prev_relay > 0) && pu_on_rx) { 
 		for (int i = 0; i < num_prev_relay; i++)
-			printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
+			printf(" [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
 					nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
 	}
 
@@ -290,7 +290,7 @@ SpectrumManager::senseHandler() {
 				mac_->notifyUpperLayer(udst_list, pu_on_tx);
 			} else { 
 			// channel available (Condition 2)
-				printf(" [SU Changes Channel!] Node: %d Current_Channel: %d Next_Channel: %d Time: %f\n", 
+				printf(" [SU Changes Channel!] Node: %d Current_Channel: %d Next_Channel: %d Time: %f\n\n", 
 						nodeId_, current_channel, next_channel, CURRENT_TIME);
 
 				repository_->set_recv_channel(nodeId_, next_channel);
