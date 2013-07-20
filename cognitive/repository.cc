@@ -720,11 +720,20 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 	int hop_cnt[MAX_NODES];
 #endif
 
+#ifdef CP_HT
+	int hop_cnt[MAX_NODES];
+#endif
+
+
 	for (int i = 0; i < g->nvertices; i++) {
 		intree[i] = false;
 		distance[i] = MAXD;
 		parent[i] = -1;
 #ifdef SAMER
+		hop_cnt[i] = MAX_HOP;
+#endif
+
+#ifdef CP_HT
 		hop_cnt[i] = MAX_HOP;
 #endif
 	}
@@ -733,6 +742,10 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 	int cur_node = start; 
 	distance[cur_node] = 0.0;
 #ifdef SAMER
+	hop_cnt[cur_node] = 0;
+#endif
+
+#ifdef CP_HT
 	hop_cnt[cur_node] = 0;
 #endif
 
@@ -759,6 +772,10 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 			if (distance[nb_id] > max_t) {
 				distance[nb_id] = max_t;
 				parent[nb_id] = cur_node;
+				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
+			} else if ((distance[nb_id] == max_t) && (hop_cnt[nb_id] > hop_cnt[cur_node] + 1)) {
+				parent[nb_id] = cur_node;
+				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
 			}
 			#endif
 
