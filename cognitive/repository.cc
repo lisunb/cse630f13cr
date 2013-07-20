@@ -490,7 +490,7 @@ Repository::get_channel_utility(int node, int channel) {
  * Functions used for joint path and channel allocation
  ********************************************************/
 
-// calulate the link metric value accroding to a metric
+// calculate the link metric value accroding to a metric
 double
 Repository::cal_link_wt(int host, int nb_id, int channel, double time) {
 
@@ -533,7 +533,7 @@ Repository::cal_link_wt(int host, int nb_id, int channel, double time) {
 			if (repository_table_nb[nb1][j].channel[channel]) {
 				int nb2 = repository_table_nb[nb1][j].node; // 2-hop nb
 				bool appear = false;
-				for (int k = 0; k < nb_counter; k++) { // whether in nb_list
+				for (int k = 0; k < nb_counter; k++) { // check whether in nb_list
 					if (nb_list[k] == nb2)
 						appear = true;
 				}
@@ -541,7 +541,7 @@ Repository::cal_link_wt(int host, int nb_id, int channel, double time) {
 					nb_list[nb_counter] = nb2;
 					nb_counter++;
 				}
-				if (nb_counter == MAX_NB) {
+				if (nb_counter == MAX_NB) { // error check: neighbor limit
 					printf("[!!!WARNING!!!] 2-hop nb num exceed upper limit.\n");
 					exit(0);
 				}
@@ -593,7 +593,7 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 
 	// check all channels one by one
 	if (repository_table_rx[nb_id].set == 0) {
-	// rx channel is not set
+	// if rx channel is not set
 		for (int ch = 1; ch < MAX_CHANNELS; ch++) {
 			if (repository_table_nb[node][nb_idx].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
@@ -620,7 +620,7 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 			}
 		}
 	} else {
-	// rx channel is already set
+	// if rx channel is already set
 		channel_ = repository_table_rx[nb_id].recv_channel;
 #ifndef SAMER // not SAMER
 		weight_ = cal_link_wt(node, nb_id, channel_, time);
@@ -682,11 +682,9 @@ Repository::construct_graph(graph *g, double time) {
 
 	for (int i = 0; i < g->nvertices; i++) {
 		for (int j = 0; j < MAX_NB; j++) {
-			if (repository_table_nb[i][j].node == -1)
-			// the end of neighbor list
+			if (repository_table_nb[i][j].node == -1) // the end of neighbor list
 				break;
-			if (g->degree[i] == (MAX_NB-1)) {
-			// check the number of neighbor
+			if (g->degree[i] == (MAX_NB-1)) { // error check: outgoing degree limit
 				printf("\n[!!!WARNING!!!] Node %d will exceed max degree.\n",i);
 				exit(0);
 			}
@@ -696,15 +694,14 @@ Repository::construct_graph(graph *g, double time) {
 			int nb_rx_set = repository_table_rx[nb_id].set;
 			int nb_rx_ch = repository_table_rx[nb_id].recv_channel;
 
-			if (nb_rx_ch <= 0) {
-			// check correctness of rx channel
+			if (nb_rx_ch < 1) { // error check: correctness of rx channel
 				printf("\n[!!!WARNING!!!] Node %d is using wrong rx channel.\n",i);
 				exit(0);
 			}
 
 			if ((nb_rx_set == 0) ||
 				((nb_rx_set > 0) && repository_table_nb[i][j].channel[nb_rx_ch])) {
-			// neighbor rx is not set or the neighbor is a neighbor on its rx channel
+			// if neighbor rx is not set or the neighbor is a neighbor on its rx channel
 				g->edges[i][j].v = nb_id; // insert node
 				check_neighbor(g, i, j, current_time); // check channels on this neighbor
 				g->degree[i] ++;
@@ -717,18 +714,28 @@ Repository::construct_graph(graph *g, double time) {
 void 
 Repository::dijkstra(graph *g, int start, int parent[]) {
 
-	bool intree[MAX_NODES];		/* is the vertex in the tree yet? */
-	double distance[MAX_NODES];	/* distance vertex is from start */
+	bool intree[MAX_NODES];		// mark nodes which have been selected as "current node"
+	double distance[MAX_NODES];	// distance vertex from start point
+#ifdef SAMER
+	int hop_cnt[MAX_NODES];
+#endif
 
 	for (int i = 0; i < g->nvertices; i++) {
 		intree[i] = false;
 		distance[i] = MAXD;
 		parent[i] = -1;
+#ifdef SAMER
+		hop_cnt[i] = MAX_HOP;
+#endif
 	}
 
 	// set searching start point (from source node)
 	int cur_node = start; 
 	distance[cur_node] = 0.0;
+#ifdef SAMER
+	hop_cnt[cur_node] = 0;
+#endif
+
 
 	// start searching procedure
 	while (intree[cur_node] == false) {
@@ -761,6 +768,10 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 			if (distance[nb_id] > max_t) {
 				distance[nb_id] = max_t;
 				parent[nb_id] = cur_node;
+				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
+			} else if ((distance[nb_id] == max_t) && (hop_cnt[nb_id] > hop_cnt[cur_node] + 1)) {
+				parent[nb_id] = cur_node;
+				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
 			}
 			#endif
 

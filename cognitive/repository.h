@@ -19,9 +19,9 @@
 
 // define one spectrum-aware routing metric
 // coolest path - highest temp; coolest path - accumulated temp; samer;
-#define CP_AT
+//#define CP_AT
 //#define CP_HT
-//#define SAMER
+#define SAMER
 //#define CRP
 
 // print debug info on screen 
