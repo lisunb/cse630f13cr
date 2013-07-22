@@ -563,7 +563,11 @@ Repository::cal_link_wt(int host, int nb_id, int channel, double time) {
 #endif // end if SAMER
  
 #ifdef CRP
+	#ifdef CRP_PT_CTRL
 	metric_value_ = 1.0 - channel_wt[channel];
+	#else
+	metric_value_ = repository_channel_utility[host][channel];
+	#endif
 #endif // end if CRP
 
 	return metric_value_;
@@ -587,8 +591,10 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 
 #ifdef CRP // check if a channel satisfies crp constraints
 	bool max_link_wt = 100.0;
+	#ifdef CRP_PT_CTRL
 	bool channel_st[MAX_CHANNELS];
 	check_channel_st(channel_st, node);
+	#endif
 #endif
 
 	// check all channels one by one
@@ -598,11 +604,11 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 			if (repository_table_nb[node][nb_idx].channel[ch]) {
 			// hold a neighbor relationship on channel "ch"
 				double t_ = cal_link_wt(node, nb_id, ch, time);
-#ifdef CRP // CRP
+				#ifdef CRP_PT_CTRL
 				if (!channel_st[ch]) {
 					t_ = max_link_wt;
 				}
-#endif
+				#endif
 
 #ifndef SAMER // not SAMER
 				if (t_ < weight_) {
@@ -624,11 +630,11 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 		channel_ = repository_table_rx[nb_id].recv_channel;
 #ifndef SAMER // not SAMER
 		weight_ = cal_link_wt(node, nb_id, channel_, time);
-	#ifdef CRP
+		#ifdef CRP_PT_CTRL
 		if (!channel_st[channel_]) {
 			weight_ = max_link_wt;
 		}
-	#endif
+		#endif
 #else // SAMER
 		int route_count = repository_table_rx[nb_id].set + 1;
 		for (int ch = 1; ch < MAX_CHANNELS; ch++) {
@@ -652,6 +658,14 @@ Repository::check_neighbor(graph *g, int node, int nb_idx, double time) {
 	weight_ = 1.0 - ((double)ch_cnt - weight_)/10.0; 
 #endif
 
+#ifdef CRP
+	#ifndef CRP_PT_CTRL
+	if ((check_channel_average(node, channel_) == false) ||
+		(check_channel_variance(node, channel_) == false)) {
+		weight_ = max_link_wt;
+	}
+	#endif
+#endif
 	// store the best weight and channel for this neighbor
 	g->edges[node][nb_idx].weight = weight_;
 	g->edges[node][nb_idx].channel = channel_;
@@ -716,11 +730,7 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 
 	bool intree[MAX_NODES];		// mark nodes which have been selected as "current node"
 	double distance[MAX_NODES];	// distance vertex from start point
-#ifdef SAMER
-	int hop_cnt[MAX_NODES];
-#endif
-
-#ifdef CP_HT
+#ifdef HOP_CNT
 	int hop_cnt[MAX_NODES];
 #endif
 
@@ -729,11 +739,7 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 		intree[i] = false;
 		distance[i] = MAXD;
 		parent[i] = -1;
-#ifdef SAMER
-		hop_cnt[i] = MAX_HOP;
-#endif
-
-#ifdef CP_HT
+#ifdef HOP_CNT
 		hop_cnt[i] = MAX_HOP;
 #endif
 	}
@@ -741,11 +747,7 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 	// set searching start point (from source node)
 	int cur_node = start; 
 	distance[cur_node] = 0.0;
-#ifdef SAMER
-	hop_cnt[cur_node] = 0;
-#endif
-
-#ifdef CP_HT
+#ifdef HOP_CNT
 	hop_cnt[cur_node] = 0;
 #endif
 
@@ -772,10 +774,12 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 			if (distance[nb_id] > max_t) {
 				distance[nb_id] = max_t;
 				parent[nb_id] = cur_node;
+			#ifdef HOP_CNT
 				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
 			} else if ((distance[nb_id] == max_t) && (hop_cnt[nb_id] > hop_cnt[cur_node] + 1)) {
 				parent[nb_id] = cur_node;
 				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
+			#endif
 			}
 			#endif
 
@@ -785,10 +789,12 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 			if (distance[nb_id] > max_t) {
 				distance[nb_id] = max_t;
 				parent[nb_id] = cur_node;
+			#ifdef HOP_CNT
 				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
 			} else if ((distance[nb_id] == max_t) && (hop_cnt[nb_id] > hop_cnt[cur_node] + 1)) {
 				parent[nb_id] = cur_node;
 				hop_cnt[nb_id] = hop_cnt[cur_node] + 1;
+			#endif
 			}
 			#endif
 

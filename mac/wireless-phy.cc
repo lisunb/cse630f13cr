@@ -131,7 +131,7 @@ WirelessPhy::WirelessPhy() : Phy(), sleep_timer_(this), status_(IDLE)
 	
 	sleep_timer_.resched(1.0);
 
-#ifdef PT_CONTROL
+#ifdef PT_CTRL
 	// channel 0 (control channel) - 250m
 	// channel 1, 2 - 250m
 	// channel 3, 4 - 210m
@@ -322,7 +322,7 @@ WirelessPhy::sendDown(Packet *p)
 	 *  Stamp the packet with the interface arguments
 	 */
 
-#ifdef PT_CONTROL 
+#ifdef PT_CTRL 
 	// check channel and adapt tx signal power
 	int tx_channel = 0; // default - tx power for commmon control channel (maximal)
 	hdr_cmn* ch = HDR_CMN(p);

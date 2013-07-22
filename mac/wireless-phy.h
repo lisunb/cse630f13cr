@@ -45,7 +45,7 @@
 #define LI_MOD // LI_MOD
 
 #ifdef LI_MOD
-#define PT_CONTROL // for LI_MOD only
+//#define PT_CTRL // for LI_MOD only
 #include <sys/types.h>
 #include "common/packet.h"
 #include "aodv/aodv_packet.h"
@@ -153,7 +153,7 @@ private:
 
 	friend class Sleep_Timer;
 
-#ifdef PT_CONTROL
+#ifdef PT_CTRL
 	// tx signal power for each channel
 	double pt_for_channel[11];
 #endif

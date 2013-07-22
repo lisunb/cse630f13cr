@@ -19,20 +19,23 @@
 
 // define one spectrum-aware routing metric
 // coolest path - highest temp; coolest path - accumulated temp; samer;
-//#define CP_AT
-#define CP_HT
+#define CP_AT
+//#define CP_HT
 //#define SAMER
 //#define CRP
+//#define CRP_PT_CTRL // to CRP, CRP should be defined first 
+//#define HOP_CNT // for CP-HT and SAMER, CP-HT or SAMER should be defined first
 
 // print debug info on screen 
 #undef LI_DEBUG
 
 // This number should be the same as the number used in tcl script
-#define MAX_NODES	169			/* maximum number of vertices for dijkstra */
+#define MAX_NODES	49			/* maximum number of vertices for dijkstra */
+//#define MAX_NODES	169			/* maximum number of vertices for dijkstra */
 #define MAX_NB	MAX_NODES		/* maximum outdegree of a vertex */
 #define MAX_FLOWS	5			/* maximum src-dst pairs */
-//#define MAX_HOP 	26			/* maximun hop counts */
-#define MAX_HOP 	52			/* maximun hop counts */
+#define MAX_HOP 	26			/* maximun hop counts */
+//#define MAX_HOP 	52			/* maximun hop counts */
 #define MAXD		1000.0		/* maximum distance */
 
 #endif // LI_MOD
@@ -225,9 +228,9 @@ class Repository : public NsObject {
 		int record_path(graph *g, int start, int end, int parent[]); // record dijkstra result in repository
 
 		// repositories
-		repository_entry_recv repository_table_rx[MAX_NODES]; // contains the channels used for receiving by node i 
-		repository_entry_send repository_table_tx[MAX_NODES][MAX_CHANNELS]; // contains the information (active/time) for sending node i and channel j
-		repository_entry_path repository_table_path[MAX_FLOWS]; // all routing routes 
+		repository_entry_recv repository_table_rx[MAX_NODES]; // rx related info
+		repository_entry_send repository_table_tx[MAX_NODES][MAX_CHANNELS]; // tx related info
+		repository_entry_path repository_table_path[MAX_FLOWS]; // routing paths
 		repository_neighbor repository_table_nb[MAX_NODES][MAX_NB];
 
 		int repository_node_nb[MAX_NODES][MAX_NB]; // neighbor table
