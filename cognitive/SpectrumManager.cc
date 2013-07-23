@@ -245,7 +245,7 @@ SpectrumManager::senseHandler() {
 		// Output link break info if pre-hop tx is interupted by PU.
 		if ((!pu_on_rx) && (pu_on_tx > 0)) { 
 			for (int i = 0; i < pu_on_tx; i++)
-				printf("\n [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
+				printf(" [PU Shows Up!] Node: %d Current_Channel: %d Time: %f Set_Times: %d\n", 
 						nodeId_, current_channel, CURRENT_TIME, num_prev_relay);
 		}
 
@@ -303,6 +303,7 @@ SpectrumManager::senseHandler() {
 			#endif
 			
 			// Transmit timer will be set after handoff.
+			sensing_ = false;
 			return;
 
 		} // end of if( pu_on_rx == true || pu_on_tx != 0 ) 
@@ -313,7 +314,7 @@ SpectrumManager::senseHandler() {
 	pu_on_rx = false;
 	ttimer_.start(transmit_time_);
 	mac_->checkBackoffTimer();
-	sensing_=false;
+	sensing_ = false;
 
 	#ifdef SENSING_VERBOSE_MODE
 	printf("[SENSING-DBG] Node %d starts transmitting on channel %d at time %f \n",

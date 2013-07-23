@@ -945,7 +945,7 @@ Repository::set_route_channel(int src, int dst, double time) {
 	printf(" Channel:");
 	for (int i = (hop_count -1); i >= 0; i--)
 		printf(" %d", repository_table_rx[(repository_table_path[entry_point].relay[i])].recv_channel);
-	printf("\n");
+	printf("\n\n");
 
 	#ifdef LI_DEBUG
 	printf("Print the Number of PU Appearance on Each Channel.\n");
