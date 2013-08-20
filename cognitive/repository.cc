@@ -791,26 +791,26 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 
 	bool intree[MAX_NODES];		// mark nodes which have been selected as "current node"
 	double distance[MAX_NODES];	// distance vertex from start point
-#ifdef HOP_CNT
+	#ifdef HOP_CNT
 	int hop_cnt[MAX_NODES];
-#endif
+	#endif
 
 
 	for (int i = 0; i < g->nvertices; i++) {
 		intree[i] = false;
 		distance[i] = MAXD;
 		parent[i] = -1;
-#ifdef HOP_CNT
+		#ifdef HOP_CNT
 		hop_cnt[i] = MAX_HOP;
-#endif
+		#endif
 	}
 
 	// set searching start point (from source node)
 	int cur_node = start; 
 	distance[cur_node] = 0.0;
-#ifdef HOP_CNT
+	#ifdef HOP_CNT
 	hop_cnt[cur_node] = 0;
-#endif
+	#endif
 
 
 	// start searching procedure
@@ -869,7 +869,12 @@ Repository::dijkstra(graph *g, int start, int parent[]) {
 		// look for the next "current node"
 		double shortest_dist = MAXD;
 		for (int i = 0; i < g->nvertices; i++) {
-			if ((intree[i] == false) && (distance[i]) < shortest_dist) {
+			#ifdef HOP_LIMIT
+			if ((intree[i] == false) && (distance[i] < shortest_dist) && (hop_cnt[i] < hop_limit_samer))
+			#else
+			if ((intree[i] == false) && (distance[i] < shortest_dist))
+			#endif
+			{
 				shortest_dist = distance[i];
 				cur_node = i;
 			}
@@ -902,6 +907,11 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 	// path contains dst and src 
 	int j = 0;
 	repository_table_path[i].relay[j] = end; // record dst
+
+	if (parent[end] == -1 ) { // error check: existence of routing path
+		printf("\n[!!!WARNING!!!] Path doesn't exist in flow with source %d and dest %d.\n", start, end);
+		exit(0);
+	}
 
 	int next_ = end;
 	while (next_ != start) { // record the other nodes including src
