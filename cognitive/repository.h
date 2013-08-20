@@ -8,35 +8,36 @@
 #include <stdlib.h>
 #include <string.h>
 #include <random.h>
+#include <math.h>
 #include "object.h"
 
 
 // <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< lsun3
 #define LI_MOD
 
-// Li's Implementation
+// Li's implementation
 #ifdef LI_MOD
 
-// define one spectrum-aware routing metric
-// coolest path - highest temp; coolest path - accumulated temp; samer;
-#define CP_AT
-//#define CP_HT
-//#define SAMER
+// define CRN routing protocol: CP-AT, CP-HT, SAMER or CRP
+//#define CP_AT // coolest path - accumulated temperature
+//#define CP_HT // coolest path - highest temperature
+#define SAMER
+#define HOP_CNT // for SAMER and CP-HT, perfer shorter path if costs are the same
+#define HOP_LIMIT // for SAMER, limit path length in random src-dst experiments
 //#define CRP
-//#define CRP_PT_CTRL // to CRP, CRP should be defined first 
-//#define HOP_CNT // for CP-HT and SAMER, CP-HT or SAMER should be defined first
+//#define CRP_PT_CTRL // for CRP, support different propagation distances on different channels 
 
 // print debug info on screen 
 #undef LI_DEBUG
 
 // This number should be the same as the number used in tcl script
-#define MAX_NODES	49			/* maximum number of vertices for dijkstra */
-//#define MAX_NODES	169			/* maximum number of vertices for dijkstra */
-#define MAX_NB	MAX_NODES		/* maximum outdegree of a vertex */
-#define MAX_FLOWS	5			/* maximum src-dst pairs */
-#define MAX_HOP 	26			/* maximun hop counts */
-//#define MAX_HOP 	52			/* maximun hop counts */
-#define MAXD		1000.0		/* maximum distance */
+#define MAX_NODES	49			// maximum number of vertices for dijkstra (49 nodes) 
+//#define MAX_NODES	169			// maximum number of vertices for dijkstra (169 nodes)
+#define MAX_NB	MAX_NODES		// maximum outdegree of a vertex
+#define MAX_HOP 	26			// maximun hop counts for 49-node(7*7) topology
+//#define MAX_HOP 	52			// maximun hop counts for 169-node(13*13) topology
+#define MAX_FLOWS	5			// maximum src-dst pairs
+#define MAXD		1000.0		// maximum cost
 
 #endif // LI_MOD
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -240,6 +241,11 @@ class Repository : public NsObject {
 		double channel_wt[MAX_CHANNELS];
 		double average_channel_utility[MAX_CHANNELS]; // channel utility threshold
 		nvs_sensing nvs_table[MAX_NODES];
+		#endif
+
+		#ifdef HOP_LIMIT
+		int hop_limit_samer;
+		void set_hop_limit(graph *g, int source, int destination); // find hop limit for samer
 		#endif
 
 		bool sd_pointer_set_; // indicator of setting spectrum data pointer

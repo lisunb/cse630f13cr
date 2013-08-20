@@ -32,7 +32,6 @@ Repository::Repository() {
 			repository_table_tx[node][channel].active=false;
 
 #else // LI_MOD
-// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
 	// Intialize node table - node i, channel j, path k 
 	for (int i = 0; i < MAX_NODES; i++) {
@@ -71,6 +70,20 @@ Repository::Repository() {
 		}
 	}
 
+
+	// Initialize route tables, path i, hop j
+	for(int i = 0; i < MAX_FLOWS; i++) {
+		repository_table_path[i].src = -1;
+		repository_table_path[i].dst = -1;
+		repository_table_path[i].is_on = 0;
+		for(int j = 0; j < MAX_HOP; j++) {
+			repository_table_path[i].relay[j] = -1;
+		}
+	}
+
+	// Indicator for getting SpectrumData pointer
+	sd_pointer_set_ = false;
+
 	/*
 	// Initialize sensing indicators
 	for(int i = 0; i < MAX_NODES; i++) { 
@@ -101,23 +114,12 @@ Repository::Repository() {
 		int t = (i + 1) / 2;
 		channel_wt[i] = (max_dist - (double)(t-1) * 40.0 - 1) / max_dist;
 	}
-
 	#endif // end CRP
 
-	// Initialize route tables, path i, hop j
-	for(int i = 0; i < MAX_FLOWS; i++) {
-		repository_table_path[i].src = -1;
-		repository_table_path[i].dst = -1;
-		repository_table_path[i].is_on = 0;
-		for(int j = 0; j < MAX_HOP; j++) {
-			repository_table_path[i].relay[j] = -1;
-		}
-	}
+	#ifdef HOP_LIMIT
+	hop_limit_samer = MAX_HOP;
+	#endif
 
-	// Indicator for getting SpectrumData pointer
-	sd_pointer_set_ = false;
-
-// >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 #endif //LI_MOD
 }
 
@@ -725,6 +727,65 @@ Repository::construct_graph(graph *g, double time) {
 	}
 }
 
+#ifdef HOP_LIMIT
+void 
+Repository::set_hop_limit(graph *g, int source, int destination) {
+
+	bool intree[MAX_NODES];	
+	int distance[MAX_NODES];
+
+	for (int i = 0; i < g->nvertices; i++) {
+		intree[i] = false;
+		distance[i] = MAX_HOP;
+	}
+
+	// set start point
+	int cur_node = source;
+	distance[cur_node] = 0;
+
+	// the search procedure
+	while (intree[cur_node] == false) {
+		intree[cur_node] = true;
+		// check all neighbors of the current node
+		for (int i = 0; i < g->degree[cur_node]; i++) {
+			int nb_id = g->edges[cur_node][i].v;
+			
+			if (distance[nb_id] > (distance[cur_node] + 1)) {
+				distance[nb_id] = distance[cur_node] + 1;
+			}
+		}
+		// look for the next "current node"
+		int shortest_dist = MAX_HOP + 1;
+		for (int i = 0; i < g->nvertices; i++) {
+			if ((intree[i] == false) && (distance[i]) < shortest_dist) {
+				shortest_dist = distance[i];
+				cur_node = i;
+			}
+		}
+	}
+
+	// set path length limit
+	double path_len = (double)distance[destination] * 2.5; // use parameter 2.5
+	hop_limit_samer = (int)ceil(path_len);
+
+	// error check
+	/*
+	int src_x = source % 7;
+	int src_y = source / 7;
+	int dst_x = destination % 7;
+	int dst_y = destination / 7;
+	int len_x = (int)fabs((double)(src_x - dst_x));
+	int len_y = (int)fabs((double)(src_y - dst_y));
+	int len_calc = (len_x>len_y?len_x:len_y);
+	if (len_calc == distance[destination]) 
+		printf("check_hop source %d dest %d sp %d thresh %d yes\n", source, destination, distance[destination], hop_limit_samer);
+	else
+		printf("check_hop source %d dest %d sp %d thresh %d no\n", source, destination, distance[destination], hop_limit_samer);
+	exit(0);
+	*/
+}
+#endif
+
 void 
 Repository::dijkstra(graph *g, int start, int parent[]) {
 
@@ -925,6 +986,9 @@ Repository::set_route_channel(int src, int dst, double time) {
 	// Step 2 - Read/Contruct graph with repository.
 	graph g;
 	construct_graph(&g, time); 
+	#ifdef HOP_LIMIT
+	set_hop_limit(&g, src, dst);
+	#endif
 
 	// Step 3 - Search the best path.
 	int parent[MAX_NODES]; // discovery relation
