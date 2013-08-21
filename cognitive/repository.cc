@@ -908,11 +908,6 @@ Repository::record_path(graph *g, int start, int end, int parent[]) {
 	int j = 0;
 	repository_table_path[i].relay[j] = end; // record dst
 
-	if (parent[end] == -1 ) { // error check: existence of routing path
-		printf("\n[!!!WARNING!!!] Path doesn't exist in flow with source %d and dest %d.\n", start, end);
-		exit(0);
-	}
-
 	int next_ = end;
 	while (next_ != start) { // record the other nodes including src
 		j++;
@@ -1003,6 +998,15 @@ Repository::set_route_channel(int src, int dst, double time) {
 	// Step 3 - Search the best path.
 	int parent[MAX_NODES]; // discovery relation
 	dijkstra(&g, src, parent);
+
+	#ifdef HOP_LIMIT
+	if (parent[dst] == -1) { // Loose hop limit if no route exists. 
+		printf("\n[!!!WARNING!!!] No route exists between %d and %d. Loose hop limit constraint.\n", 
+				src, dst);
+		hop_limit_samer = MAX_HOP;
+		dijkstra(&g, src, parent);
+	}
+	#endif
 
 	// Step 4 - Record the path & channel allocation results in repository.
 	int entry_point = record_path(&g, src, dst, parent);
